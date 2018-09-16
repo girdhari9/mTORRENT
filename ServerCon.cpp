@@ -47,14 +47,15 @@ int main(){
             perror("accept"); 
             exit(EXIT_FAILURE); 
         } 
-        pid_t pid = fork();
-        if(pid == 0){
+        
+        if(fork() == 0){
+            close(server_fd);
             char recvBuffer[BUFFER_SIZE];
             char sendBuffer[BUFFER_SIZE]; 
             memset(&recvBuffer, '\0',BUFFER_SIZE);
             memset(&sendBuffer, '\0',BUFFER_SIZE);
 
-            string SrcFileName = "input.mp4";
+            string SrcFileName = "input.txt";
             size_t read_size;
             int srcFilePtr = open(SrcFileName.c_str(), O_RDONLY, O_SYNC);
             
@@ -63,12 +64,16 @@ int main(){
             printf("%s\n",recvBuffer );
             memset(&recvBuffer, '\0',BUFFER_SIZE);
             printf("> Sending data...\n");
+            // this_thread::sleep_for (chrono::seconds(2)); //To sleep data sending
             // send(new_socket , (char *)sendBuffer, read_size,0); // To send file name
             while((read_size = read(srcFilePtr,sendBuffer,DataSize)) > 0){
                 send(new_socket , (char *)sendBuffer, read_size,0);
                 read( new_socket , recvBuffer, 20);
+                memset(&sendBuffer, '\0',BUFFER_SIZE);
                 // printf("Packet Number: %s\n",recvBuffer );
             }
+            // char temp_buffer;
+            // send(new_socket , (char *)temp_buffer, 0,0);
             printf("> Data sent!\n");
             exit(0);
         }

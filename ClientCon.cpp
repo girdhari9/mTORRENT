@@ -23,7 +23,7 @@ int main()
 
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
     { 
-        printf("\n Socket creation error \n"); 
+        printf("\n Socket creation error...! \n"); 
         return -1; 
     } 
     memset(&serv_addr, '0', sizeof(serv_addr)); 
@@ -31,12 +31,12 @@ int main()
     serv_addr.sin_port = htons(PORT); 
 
     if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr)<=0){ 
-        printf("\nInvalid address/ Address not supported \n"); 
+        printf("\nInvalid address/ Address not supported! \n"); 
         return -1; 
     } 
    
     if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0){ 
-        printf("\nConnection Failed \n"); 
+        printf("\nConnection Failed...! \n"); 
         return -1; 
     }
     memset(&recvBuffer, '\0',BUFFER_SIZE);
@@ -54,7 +54,6 @@ int main()
     printf("> recieving data...\n");
     while((read_size = read( sock , recvBuffer, DataSize)) > 0){
         char data_packet[20]; 
-        cout<<"$";
         sprintf( data_packet, "%lld", count );
         // puts( data_packet );
         write(recvFilePtr,recvBuffer,read_size);
