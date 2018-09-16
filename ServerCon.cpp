@@ -55,8 +55,15 @@ int main(){
             memset(&recvBuffer, '\0',BUFFER_SIZE);
             memset(&sendBuffer, '\0',BUFFER_SIZE);
 
-            string SrcFileName = "input.txt";
+            string SrcFileName = "input.mp4";
             size_t read_size;
+            struct stat fileStat;
+            int err = stat(SrcFileName.c_str(), &fileStat); 
+            if (0 != err){
+                cout<<"Error occured in file";
+                exit(0);
+            } 
+            string l = to_string(fileStat.st_size);
             int srcFilePtr = open(SrcFileName.c_str(), O_RDONLY, O_SYNC);
             
             // printf("%s\n",recvBuffer );
@@ -66,6 +73,8 @@ int main(){
             printf("> Sending data...\n");
             // this_thread::sleep_for (chrono::seconds(2)); //To sleep data sending
             // send(new_socket , (char *)sendBuffer, read_size,0); // To send file name
+            send(new_socket , l.c_str(), strlen(l.c_str()),0);
+            this_thread::sleep_for (chrono::seconds(1));
             while((read_size = read(srcFilePtr,sendBuffer,DataSize)) > 0){
                 send(new_socket , (char *)sendBuffer, read_size,0);
                 read( new_socket , recvBuffer, 20);
