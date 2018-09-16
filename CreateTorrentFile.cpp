@@ -2,7 +2,6 @@
 #include <openssl/sha.h>
 
 #define FILE_SIZE 524288
-#define HASH_LENGHT 20
 using namespace std;
 
 void mtorrentFile(){
@@ -48,7 +47,6 @@ int CalculateSHA(string SrcFileName,int mtorrentPtr){
         bzero(src_buffer, FILE_SIZE);
         bzero(hashChunk, SHA_DIGEST_LENGTH);
         read_size = read(srcFilePtr,src_buffer,FILE_SIZE);
-        // cout<<read_size<<"\n";
         if (read_size == 0)
             break;
         SHA1((unsigned char*) src_buffer, read_size, hashChunk);

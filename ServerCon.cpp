@@ -49,18 +49,19 @@ int main()
     } 
     memset(&recvBuffer, '\0',BUFFER_SIZE);
     memset(&sendBuffer, '\0',BUFFER_SIZE);
-    string SrcFileName = "input.txt";
+    string SrcFileName = "input.mp4";
     size_t read_size;
-    int srcFilePtr = open(SrcFileName.c_str(), O_RDONLY);
+    int srcFilePtr = open(SrcFileName.c_str(), O_RDONLY, O_SYNC);
     
     // printf("%s\n",recvBuffer );
     printf("Server Stared!\n"); 
-    // read( new_socket , recvBuffer, 1024); 
+    read( new_socket , recvBuffer, 40); 
     printf("%s\n",recvBuffer );
     while((read_size = read(srcFilePtr,sendBuffer,DataSize)) > 0){
-        send(new_socket , (char *)sendBuffer, strlen((char *)sendBuffer),0);
-        // read( new_socket , recvBuffer, 1024);
-    } 
+        send(new_socket , (char *)sendBuffer, read_size,0);
+        read( new_socket , recvBuffer, 20);
+        printf("%s\n",recvBuffer );
+    }
     printf("Data sent!\n"); 
     return 0; 
 } 
