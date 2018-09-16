@@ -16,7 +16,7 @@ int main()
     int sock = 0, valread; 
     struct sockaddr_in serv_addr;
 
-    char sendBuffer[BUFFER_SIZE];
+    char sendBuffer[BUFFER_SIZE] = "Ready...\n";
     char recvBuffer[BUFFER_SIZE]; 
 
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
@@ -42,15 +42,17 @@ int main()
         printf("\nConnection Failed \n"); 
         return -1; 
     }
-    // send(sock , sendBuffer , strlen(sendBuffer) , 0 ); 
     printf("Client open!\n"); 
 
     FILE * recvFilePtr;
     string recvFileName = "recvfile.txt";
     recvFilePtr = fopen(recvFileName.c_str(),"w");
-    valread = read( sock , recvBuffer, 1024); 
-    // fwrite(recvBuffer,1,sizeof(recvBuffer),recvFilePtr);
-    fprintf(recvFilePtr, "%s\n", recvBuffer);
-    printf("%s\n",recvBuffer ); 
+
+    // send(sock , sendBuffer , strlen(sendBuffer) , 0 );
+    while(read( sock , recvBuffer, 1024)){
+        fprintf(recvFilePtr, "%s\n", recvBuffer);
+        // send(sock , sendBuffer , strlen(sendBuffer) , 0 );
+    }
+    printf("Data Received!\n");
     return 0; 
 } 

@@ -18,10 +18,11 @@ void mtorrentFile(){
 	string l = to_string(fileStat.st_size);
     int mtorrentPtr = open(TorrentFileName.c_str(), O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR);
 
-	string src_ip = "127.0.0.1:9000 127.0.0.1:9001";
-
-    write(mtorrentPtr,src_ip.c_str(),strlen(src_ip.c_str()));
-    write(mtorrentPtr,"\n",1);
+	string Tracker1 = "127.0.0.1:9000\n";
+    string Tracker2 = "127.0.0.1:9001\n";
+    write(mtorrentPtr,Tracker1.c_str(),strlen(Tracker1.c_str()));
+    write(mtorrentPtr,Tracker2.c_str(),strlen(Tracker2.c_str()));
+    
     write(mtorrentPtr,SrcFileName.c_str(),strlen(SrcFileName.c_str()));
 	write(mtorrentPtr,"\n",1);
     write(mtorrentPtr,l.c_str(),strlen(l.c_str()));
