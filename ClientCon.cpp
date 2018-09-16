@@ -42,23 +42,26 @@ int main()
     memset(&recvBuffer, '\0',BUFFER_SIZE);
     memset(&sendBuffer, '\0',BUFFER_SIZE);
 
-    printf("Client open!\n"); 
-
+    cout<<"[+]system started...\n"; 
+    cout<<"[+]system connecting...\n";
     string recvFileName = "recvdata.mp4";
     int recvFilePtr = open(recvFileName.c_str(), O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR);;
     size_t read_size;
     long long int count = 1;
-    char start_msg[] = "I'm ready to recieve data...\n";
+    char start_msg[] = "client is ready...\n";
     send(sock , start_msg , strlen(start_msg) , 0 );
+    cout<<"[+]system connected...\n";
+    printf("> recieving data...\n");
     while((read_size = read( sock , recvBuffer, DataSize)) > 0){
         char data_packet[20]; 
+        cout<<"$";
         sprintf( data_packet, "%lld", count );
-        puts( data_packet );
+        // puts( data_packet );
         write(recvFilePtr,recvBuffer,read_size);
         send(sock , data_packet , strlen(data_packet) , 0 );
         count++;
     }
     close(recvFilePtr);
-    printf("Data Received!\n");
+    printf("> Data Received!\n");
     return 0; 
 } 
