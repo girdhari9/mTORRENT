@@ -15,8 +15,7 @@ using namespace std;
 void clientConnection();
 void SendData(int);
 
-int main() 
-{ 
+int main() { 
     clientConnection();
     return 0;
 } 
@@ -63,8 +62,9 @@ void SendData(int sock){
     cout<<"[+]system connected...\n";
     printf("> recieving data...\n");
 
-    read(sock, sendBuffer, DataSize);
-    int FileSize = atoi(sendBuffer);
+    int FileSize, ack = 1;
+    read(sock, &FileSize, sizeof(int));
+    send(sock, &ack, sizeof(int),0);
     while((read_size = read(sock, recvBuffer, DataSize)) > 0){
         TotalSize += read_size;
         char data_packet[20]; 

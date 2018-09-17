@@ -13,12 +13,18 @@
 #define DataSize 1024
 using namespace std;
    
+void ServerConnection();
+void Communication(int server_fd,struct sockaddr_in address);
+
 int main(){ 
-    int server_fd, new_socket, valread; 
+    ServerConnection();
+    return 0; 
+} 
+
+void ServerConnection(){
+    int server_fd; 
     struct sockaddr_in address; 
     int opt = 1; 
-    int addrlen = sizeof(address); 
-
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0){ 
         perror("socket failed"); 
         exit(EXIT_FAILURE); 
@@ -39,7 +45,13 @@ int main(){
     if (listen(server_fd, 3) < 0){ 
         perror("listen"); 
         exit(EXIT_FAILURE); printf("[+]server started...\n");
-    } 
+    }
+    Communication(server_fd,address);
+}
+
+void Communication(int server_fd,struct sockaddr_in address){
+
+    int new_socket,addrlen = sizeof(address);
     printf("[+]server started...\n");
     while(1){
         printf("[+]Listening...\n");
@@ -63,18 +75,17 @@ int main(){
                 cout<<"Error occured in file";
                 exit(0);
             } 
-            string l = to_string(fileStat.st_size);
             int srcFilePtr = open(SrcFileName.c_str(), O_RDONLY, O_SYNC);
             
-            // printf("%s\n",recvBuffer );
             read( new_socket , recvBuffer, 40); 
             printf("%s\n",recvBuffer );
             memset(&recvBuffer, '\0',BUFFER_SIZE);
             printf("> Sending data...\n");
-            // this_thread::sleep_for (chrono::seconds(2)); //To sleep data sending
+
+            int ack;
             // send(new_socket , (char *)sendBuffer, read_size,0); // To send file name
-            send(new_socket , l.c_str(), strlen(l.c_str()),0);
-            this_thread::sleep_for (chrono::seconds(1));
+            send(new_socket , &fileStat.st_size, sizeof(int),0);
+            read(new_socket, &ack, sizeof(int));
             while((read_size = read(srcFilePtr,sendBuffer,DataSize)) > 0){
                 send(new_socket , (char *)sendBuffer, read_size,0);
                 read( new_socket , recvBuffer, 20);
@@ -90,5 +101,4 @@ int main(){
             cout<<"[+]server busy...\n";
         }
     }
-    return 0; 
-} 
+}
