@@ -207,16 +207,6 @@ void ReadFileByLine(int TrackerFileD,int flag){
         }
         index++;
     }
-    // index = 0; string data;
-    // while(sendBuffer[index] != '\n' || sendBuffer[index] != 0x0){
-    //     cout<<"!";
-    //     while(sendBuffer[index] != ':'){
-    //         cout<<"%";
-    //         data += sendBuffer[index];
-    //         index++;
-    //     }
-    //     mTorrentFileData.push_back(data);
-    // }
     return ;
 }
 

@@ -49,9 +49,10 @@ int CalculateSHA(string SrcFileName,int mtorrentPtr){
         SHA1((unsigned char*) src_buffer, read_size, hashChunk);
         
         char SHA_1[20];
-        for (int z = 0; z < 20; z++)
+        for (int z = 0; z < 10; z++){
             sprintf((char *)SHA_1, "%02x", hashChunk[z]);
-        write(mtorrentPtr,SHA_1,SHA_DIGEST_LENGTH);
+            write(mtorrentPtr,SHA_1,SHA_DIGEST_LENGTH);
+        }
         SHA1_Update(&sc, src_buffer, read_size);
     }
 
@@ -61,9 +62,10 @@ int CalculateSHA(string SrcFileName,int mtorrentPtr){
     write(mtorrentPtr,"\n",1);
 
     char SHA_1[20];
-    for (int z = 0; z < 20; z++)
+    for (int z = 0; z < 10; z++){
         sprintf((char *)SHA_1, "%02x", fullhash[z]);
-    write(mtorrentPtr,SHA_1,SHA_DIGEST_LENGTH);
+        write(mtorrentPtr,SHA_1,SHA_DIGEST_LENGTH);
+    }
     close(mtorrentPtr);
     return 0;
 }
