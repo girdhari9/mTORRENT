@@ -1,12 +1,9 @@
 #include "mtorrent.h"
-#include <openssl/sha.h>
 
 #define FILE_SIZE 524288
 using namespace std;
 
-void mtorrentFile(){
-	string SrcFileName = "input.txt";
-	string TorrentFileName = "first1.mtorrent";
+void mtorrentFile(string SrcFileName, string TorrentFileName){
 
 	struct stat fileStat; 
 	int err = stat(SrcFileName.c_str(), &fileStat); 
@@ -17,10 +14,10 @@ void mtorrentFile(){
 	string l = to_string(fileStat.st_size);
     int mtorrentPtr = open(TorrentFileName.c_str(), O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR);
 
-	string Tracker1 = "127.0.0.1:9000\n";
-    string Tracker2 = "127.0.0.1:9001\n";
+	string Tracker1 = "127.0.0.1:4040\n";
+    // string Tracker2 = "127.0.0.1:9001\n";
     write(mtorrentPtr,Tracker1.c_str(),strlen(Tracker1.c_str()));
-    write(mtorrentPtr,Tracker2.c_str(),strlen(Tracker2.c_str()));
+    // write(mtorrentPtr,Tracker2.c_str(),strlen(Tracker2.c_str()));
     
     write(mtorrentPtr,SrcFileName.c_str(),strlen(SrcFileName.c_str()));
 	write(mtorrentPtr,"\n",1);
@@ -50,8 +47,11 @@ int CalculateSHA(string SrcFileName,int mtorrentPtr){
         if (read_size == 0)
             break;
         SHA1((unsigned char*) src_buffer, read_size, hashChunk);
-        write(mtorrentPtr,hashChunk,SHA_DIGEST_LENGTH);
-        // cout<<src_buffer;
+        
+        char SHA_1[20];
+        for (int z = 0; z < 20; z++)
+            sprintf((char *)SHA_1, "%02x", hashChunk[z]);
+        write(mtorrentPtr,SHA_1,SHA_DIGEST_LENGTH);
         SHA1_Update(&sc, src_buffer, read_size);
     }
 
@@ -59,7 +59,11 @@ int CalculateSHA(string SrcFileName,int mtorrentPtr){
 
     SHA1_Final(fullhash, &sc);
     write(mtorrentPtr,"\n",1);
-    write(mtorrentPtr,fullhash,SHA_DIGEST_LENGTH);
+
+    char SHA_1[20];
+    for (int z = 0; z < 20; z++)
+        sprintf((char *)SHA_1, "%02x", fullhash[z]);
+    write(mtorrentPtr,SHA_1,SHA_DIGEST_LENGTH);
     close(mtorrentPtr);
     return 0;
 }

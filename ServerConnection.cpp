@@ -67,34 +67,27 @@ void Communication(int server_fd,struct sockaddr_in address){
             memset(&recvBuffer, '\0',BUFFER_SIZE);
             memset(&sendBuffer, '\0',BUFFER_SIZE);
 
-            string SrcFileName = "input.mp4";
             size_t read_size;
-            struct stat fileStat;
-            int err = stat(SrcFileName.c_str(), &fileStat); 
-            if (0 != err){
-                cout<<"Error occured in file";
-                exit(0);
-            } 
-            int srcFilePtr = open(SrcFileName.c_str(), O_RDONLY, O_SYNC);
-            
-            read( new_socket , recvBuffer, 40); 
-            printf("%s\n",recvBuffer );
+            int ack, DataPackNumber;
+            printf("Client is ready...\n");
+
+            int fileNameLength;
+            read(new_socket, &fileNameLength, sizeof(int));
+            send(new_socket, &ack, sizeof(int), 0);
+            read(new_socket, recvBuffer, fileNameLength-1);
+            send(new_socket, &ack, sizeof(int), 0);
+            int srcFilePtr = open(recvBuffer, O_RDONLY, O_SYNC);
             memset(&recvBuffer, '\0',BUFFER_SIZE);
+
             printf("> Sending data...\n");
 
-            int ack;
-            // send(new_socket , (char *)sendBuffer, read_size,0); // To send file name
-            send(new_socket , &fileStat.st_size, sizeof(int),0);
-            read(new_socket, &ack, sizeof(int));
             while((read_size = read(srcFilePtr,sendBuffer,DataSize)) > 0){
                 send(new_socket , (char *)sendBuffer, read_size,0);
-                read( new_socket , recvBuffer, 20);
+                read( new_socket , &DataPackNumber, sizeof(int));
                 memset(&sendBuffer, '\0',BUFFER_SIZE);
-                // printf("Packet Number: %s\n",recvBuffer );
             }
-            // char temp_buffer;
-            // send(new_socket , (char *)temp_buffer, 0,0);
             printf("> Data sent!\n");
+            close(new_socket);
             exit(0);
         }
         else{

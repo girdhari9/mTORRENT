@@ -68,7 +68,7 @@ void Communication(int server_fd,struct sockaddr_in address){
 
             printf("> Sending data...\n");
             int read_size, index = 0, ack = 1,flag = 0;
-            read(new_socket , recvBuffer, 5);
+            read(new_socket , recvBuffer, 20);
             send(new_socket , &ack , sizeof(int),0);
 
             int TrackerFileD = open("trackerfile.txt", O_RDONLY, O_SYNC);
@@ -85,6 +85,8 @@ void Communication(int server_fd,struct sockaddr_in address){
 			    				read(new_socket , &ack, sizeof(int));
 			    				send(new_socket , (char *)sendBuffer, index,0);
 			    				memset(&sendBuffer, '\0',BUFFER_SIZE);
+                                cout<<"> Seeders details sent!\n";
+                                close(new_socket);
 			    				exit(0);
 			    			}
 			    			index++;
@@ -95,7 +97,6 @@ void Communication(int server_fd,struct sockaddr_in address){
 			    }
 			    index++;
 			}
-            exit(0);
         }
         else{
             cout<<"[+]server busy...\n";

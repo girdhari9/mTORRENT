@@ -6,8 +6,8 @@
 #include <openssl/sha.h>
 #include<fcntl.h>
 #include <sys/stat.h> 
-
+#include <openssl/sha.h>
 using namespace std;
 
-void mtorrentFile();
+void mtorrentFile(string,string);
 int CalculateSHA(string,int);
