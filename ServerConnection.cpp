@@ -1,26 +1,6 @@
-// #include "tcpConnection.h"
-#include<bits/stdc++.h>
-#include <unistd.h> 
-#include <sys/socket.h> 
-#include <stdlib.h> 
-#include <netinet/in.h> 
-#include <sys/stat.h> 
-#include <netinet/in.h> 
-#include<fcntl.h>
-
+#include "ClientServer.h"
 #define PORT 9000
-#define BUFFER_SIZE 2000
-#define DataSize 1024
-using namespace std;
    
-void ServerConnection();
-void Communication(int server_fd,struct sockaddr_in address);
-
-int main(){ 
-    ServerConnection();
-    return 0; 
-} 
-
 void ServerConnection(){
     int server_fd; 
     struct sockaddr_in address; 

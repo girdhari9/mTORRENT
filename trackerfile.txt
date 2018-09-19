@@ -1,3 +1,7 @@
 abcdefghijklmnopqrst
-127.0.0.1 9000 /home/gunno/Documents/os_asst/minTorrent
-127.0.0.1 4040 /home/gunno/Documents/os_asst/minTorrent
+[
+127.0.0.1 6000 /home/gunno/Documents/os_asst/minTorrent
+127.0.0.1 9001 /home/gunno/Documents/os_asst
+]
+
+

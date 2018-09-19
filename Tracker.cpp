@@ -1,4 +1,3 @@
-// #include "tcpConnection.h"
 #include<bits/stdc++.h>
 #include <unistd.h> 
 #include <sys/socket.h> 
@@ -14,7 +13,8 @@
 using namespace std;
 
 void TrackerConnection();
-void Communication(int,struct sockaddr_in);
+void Communication(int ,struct sockaddr_in);
+void ReadSeedersDetail(int ,int );
 
 int main(){ 
     TrackerConnection();
@@ -66,8 +66,8 @@ void Communication(int server_fd,struct sockaddr_in address){
             memset(&recvBuffer, '\0',BUFFER_SIZE);
             memset(&sendBuffer, '\0',BUFFER_SIZE);
 
-            printf("> Sending data...\n");
-            int read_size, index = 0, ack = 1,flag = 0;
+            printf("> Seeders Detail Sending...\n");
+            int read_size, index = 0, ack = 2;
             read(new_socket , recvBuffer, 20);
             send(new_socket , &ack , sizeof(int),0);
 
@@ -77,20 +77,10 @@ void Communication(int server_fd,struct sockaddr_in address){
 			    	string sb = (string)sendBuffer;
 			    	string rb = (string)recvBuffer;
 			    	if(sb.substr(0,sb.size()-1) == rb){
-			    		flag = 1; index = 0;
-			    		memset(&sendBuffer, '\0',BUFFER_SIZE);
-			    		while (read(TrackerFileD, &sendBuffer[index], 1) == 1){
-			    			if (sendBuffer[index] == '\n' || sendBuffer[index] == 0x0){
-			    				send(new_socket , &index , sizeof(int),0);
-			    				read(new_socket , &ack, sizeof(int));
-			    				send(new_socket , (char *)sendBuffer, index,0);
-			    				memset(&sendBuffer, '\0',BUFFER_SIZE);
-                                cout<<"> Seeders details sent!\n";
-                                close(new_socket);
-			    				exit(0);
-			    			}
-			    			index++;
-			    		}
+			    		ReadSeedersDetail(new_socket,TrackerFileD);
+                        cout<<"> Seeders details sent!\n";
+                        close(new_socket);
+                        exit(0);
 			    	}
 			    	memset(&sendBuffer, '\0',BUFFER_SIZE);
 			    	index = 0; continue;
@@ -101,5 +91,29 @@ void Communication(int server_fd,struct sockaddr_in address){
         else{
             cout<<"[+]server busy...\n";
         }
+    }
+}
+
+void ReadSeedersDetail(int new_socket,int TrackerFileD){
+    int index = 0, ack = 1;
+    char sendBuffer[BUFFER_SIZE];
+    memset(&sendBuffer, '\0',BUFFER_SIZE);
+    while (read(TrackerFileD, &sendBuffer[index], 1) == 1){
+        if (sendBuffer[index] == '\n' || sendBuffer[index] == 0x0){
+            if(sendBuffer[0] != '[' && sendBuffer[0] != ']'){
+                send(new_socket , &index , sizeof(int),0);
+                read(new_socket , &ack, sizeof(int));
+                send(new_socket , (char *)sendBuffer, index,0);
+                index = 0;
+                continue;
+            }
+            if(sendBuffer[0] == ']'){
+                index = 1;
+                send(new_socket , &index , sizeof(int),0);
+                return ;
+            }
+            memset(&sendBuffer, '\0',BUFFER_SIZE);
+        }
+        index++;
     }
 }
