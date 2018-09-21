@@ -41,7 +41,6 @@ void Communication(int server_fd,struct sockaddr_in address){
         } 
         
         if(fork() == 0){
-            close(server_fd);
             char recvBuffer[BUFFER_SIZE];
             char sendBuffer[BUFFER_SIZE]; 
             memset(&recvBuffer, '\0',BUFFER_SIZE);

@@ -1,4 +1,4 @@
-all: miniTorrent share
+all: mTorrent share
 CC = g++ 
 CFLAGS = -Wall -std=c++14 -g -pthread
 
@@ -7,7 +7,7 @@ OBJ =  ClientServer.o ClientConnection.o ServerConnection.o
 %.o: %.cpp $(DEPS)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-miniTorrent: $(OBJ)
+mTorrent: $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^
 
 CC = g++ 

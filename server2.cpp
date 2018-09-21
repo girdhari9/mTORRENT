@@ -8,17 +8,22 @@
 #include <netinet/in.h> 
 #include<fcntl.h>
 #include<arpa/inet.h>
+#include<semaphore.h> 
+#include<sys/wait.h>
 
 #define PORT 6000
 #define BUFFER_SIZE 2000
 #define DataSize 1024
 using namespace std;
-   
+
+sem_t mutex1;
 void ServerConnection();
 void Communication(int server_fd,struct sockaddr_in address);
 
 int main(){ 
+    sem_init(&mutex1, 0, 1);
     ServerConnection();
+    sem_destroy(&mutex1);
     return 0; 
 } 
 
@@ -62,7 +67,6 @@ void Communication(int server_fd,struct sockaddr_in address){
         } 
         
         if(fork() == 0){
-            close(server_fd);
             char recvBuffer[BUFFER_SIZE];
             char sendBuffer[BUFFER_SIZE]; 
             memset(&recvBuffer, '\0',BUFFER_SIZE);
@@ -72,20 +76,69 @@ void Communication(int server_fd,struct sockaddr_in address){
             int ack, DataPackNumber;
             printf("Client is ready...\n");
 
-            int fileNameLength;
+            int fileNameLength,LastPartSize = 0,LoopLimit, TotalConn;
+
+            read(new_socket, &TotalConn, sizeof(int));
+            send(new_socket, &ack, sizeof(int), 0);
+            read(new_socket, &LoopLimit, sizeof(int));
+            send(new_socket, &ack, sizeof(int), 0);
+            read(new_socket, &LastPartSize, sizeof(int));
+            send(new_socket, &ack, sizeof(int), 0);
             read(new_socket, &fileNameLength, sizeof(int));
             send(new_socket, &ack, sizeof(int), 0);
             read(new_socket, recvBuffer, fileNameLength-1);
             send(new_socket, &ack, sizeof(int), 0);
-            int srcFilePtr = open(recvBuffer, O_RDONLY, O_SYNC);
+
+            ifstream input;
+            input.open(recvBuffer,ifstream::binary);
             memset(&recvBuffer, '\0',BUFFER_SIZE);
 
             printf("> Sending data...\n");
 
-            while((read_size = read(srcFilePtr,sendBuffer,DataSize)) > 0){
-                send(new_socket , (char *)sendBuffer, read_size,0);
+            int thread_n;
+            read(new_socket, &thread_n, sizeof(int));
+            send(new_socket, &ack, sizeof(int), 0);
+            read(new_socket, &ack, sizeof(int));
+            
+            int index = thread_n * DataSize, LoopValue=0; 
+            while(LoopValue < LoopLimit){
+                input.seekg (index);
+                input.read(sendBuffer,DataSize);
+
+                send(new_socket , (char *)sendBuffer, DataSize,0);
                 read( new_socket , &DataPackNumber, sizeof(int));
                 memset(&sendBuffer, '\0',BUFFER_SIZE);
+                LoopValue++;
+
+                index += TotalConn * DataSize;
+                
+            }
+            int ExtraLoopForThread = 0;
+            read(new_socket, &ExtraLoopForThread, sizeof(int));
+            send(new_socket, &ack, sizeof(int), 0);
+
+            LoopValue = 0;
+            while(LoopValue < ExtraLoopForThread){
+                if(thread_n == ExtraLoopForThread-1){
+                    input.seekg (index);
+                    if(LastPartSize)
+                        input.read(sendBuffer,LastPartSize);
+                    else input.read(sendBuffer,DataSize);
+
+                    send(new_socket , (char *)sendBuffer, LastPartSize,0);
+                    memset(&sendBuffer, '\0',BUFFER_SIZE);
+                    index += TotalConn * DataSize;
+                }
+                else{
+                    input.seekg (index);
+                    input.read(sendBuffer,DataSize);
+
+                    send(new_socket , (char *)sendBuffer, LastPartSize,0);
+                    memset(&sendBuffer, '\0',BUFFER_SIZE);
+                    index += TotalConn * DataSize;
+                }
+                read(new_socket , &DataPackNumber, sizeof(int));
+                LoopValue++;
             }
             printf("> Data sent!\n");
             close(new_socket);

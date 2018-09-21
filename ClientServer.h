@@ -9,6 +9,8 @@
 #include<arpa/inet.h>
 #include<openssl/sha.h>
 #include<thread>
+#include<semaphore.h> 
+#include<sys/wait.h>
 
 #define BUFFER_SIZE 2000
 #define DataSize 1024
@@ -18,9 +20,11 @@ using namespace std;
 void ServerConnection();
 void Communication(int server_fd,struct sockaddr_in address);
 
-int FunctionCalling(int , string);
-int clientConnection(string, int);
+int FunctionCalling(string);
+int clientConnection(string, int, string, int, int, int, int, int, ofstream &output);
+int TrackerConnection(string, int);
 void GetSeedersDetails(int, string);
 void RecieveData(int, string, int);
 string ReadSHA(int);
 void ReadFileByLine(int, int);
+void RecieveBitVector(int ,string ,int ,int, int, int, int, ofstream &output);
