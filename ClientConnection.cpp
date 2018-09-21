@@ -4,6 +4,9 @@ vector<string> ConDetail;
 vector<string> mTorrentFileData;
 sem_t mutex1;
 int TotalConn;
+map<int,string> PacketNoAvl;
+multimap<int,int> TotalAvlPack;
+
 
 int FunctionCalling(string filename){
     sem_init(&mutex1, 0, 1);
@@ -46,18 +49,37 @@ int FunctionCalling(string filename){
     int LastPartSize = 0;
     int TotalPacket = FileSize/DataSize;
     LastPartSize = FileSize - TotalPacket * DataSize;
+
+    
     int ConNoOfLastPart = TotalPacket % TotalConn;
 
     int LoopLimit = TotalPacket / TotalConn;
     int ExtraLoopForThread = TotalPacket % TotalConn;
 
-    if(LastPartSize) ExtraLoopForThread++;
+    if(LastPartSize){
+        TotalPacket++;
+        ExtraLoopForThread++;
+    }
+
+    int BitMap[TotalPacket];
+    memset(&BitMap, -1, sizeof(BitMap));
+
+    thread *threadptr = new thread[TotalConn];
+    for(int thread_n = 0; thread_n < TotalConn; thread_n++,ConDetailIndex+=3){
+            threadptr[thread_n] = thread(BitVectorRequestToServers,ConDetail[ConDetailIndex],atoi(ConDetail[ConDetailIndex+1].c_str()),ref(FileName),thread_n);
+    }
+    
+    for(int thread_n=0; thread_n < TotalConn; thread_n++,ConDetailIndex++){
+        threadptr[thread_n].join();
+    }
+
+    delete [] threadptr;
+
+    PieceSelection(TotalPacket,TotalConn,BitMap);
 
     ofstream output;
     string NewFileName = "new_" + FileName.substr(0,FileName.size()-1);
     output.open(NewFileName.c_str(), ofstream::binary);
-
-    cout<<TotalPacket<<" "<<LastPartSize<<" "<<TotalConn<<" "<<ExtraLoopForThread<<"$";
 
     thread *threadptr = new thread[TotalConn];
     for(int thread_n = 0; thread_n < TotalConn; thread_n++,ConDetailIndex+=3){
@@ -73,7 +95,7 @@ int FunctionCalling(string filename){
     //End of MultithNewFileNameread
     output.close();
     
-    // RecieveData(sock,FileName,FileSize);
+    RecieveData(sock,FileName,FileSize);
     sem_destroy(&mutex1);
     return 0;
 }
@@ -258,6 +280,8 @@ int clientConnection(string IPaddress,int PORT,string recvFileName, int FileSize
     }
     else{
         sem_wait(&mutex1);
+        cout<<"[+]system started...\n"; 
+        cout<<"[+]system connecting...\n";
         cout<<"> You are connected with: "<<IPaddress<<":"<<PORT<<"\n";
         sem_post(&mutex1);
     }
@@ -270,9 +294,6 @@ void RecieveBitVector(int sock,string recvFileName, int FileSize, int LastPartSi
     char recvBuffer[BUFFER_SIZE]; 
     memset(&recvBuffer, '\0',BUFFER_SIZE);
     memset(&sendBuffer, '\0',BUFFER_SIZE);
-
-    cout<<"[+]system started...\n"; 
-    cout<<"[+]system connecting...\n";
 
     int read_size, ack;
     long long int count = 0;
@@ -356,6 +377,105 @@ void RecieveBitVector(int sock,string recvFileName, int FileSize, int LastPartSi
     cout<<"> Data Received\n";
     close(sock);
     printf("> Connection closed!\n");
+    return ;
+}
+
+int Connection(string IPaddress,int PORT){
+    int sock = 0; 
+    struct sockaddr_in serv_addr;
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
+    { 
+        printf("\n Socket creation error \n"); 
+        return -1; 
+    } 
+    memset(&serv_addr, '0', sizeof(serv_addr)); 
+    serv_addr.sin_family = AF_INET; 
+    serv_addr.sin_port = htons(PORT); 
+    
+    if(inet_pton(AF_INET, IPaddress.c_str() , &serv_addr.sin_addr)<=0){ 
+        printf("\nInvalid address/ Address not supported \n"); 
+        return -1; 
+    } 
+   
+    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0){ 
+        printf("\nConnection Failed \n"); 
+        return -1; 
+    }
+    else{
+        sem_wait(&mutex1);
+            cout<<"> You are connected with: "<<IPaddress<<":"<<PORT<<"\n";
+        sem_post(&mutex1);
+    }
+    return sock;
+}
+
+void BitVectorRequestToServers(string IPaddress, int PORT, string FileName, int thread_n){
+    int sock = Connection(IPaddress,PORT);
+
+    char sendBuffer[BUFFER_SIZE];
+    char recvBuffer[BUFFER_SIZE];
+    memset(&recvBuffer, '\0',BUFFER_SIZE);
+    memset(&sendBuffer, '\0',BUFFER_SIZE);
+    int read_size, ack = 1, AvlPack;
+
+    int fileNameLength = FileName.length();
+    send(sock , &fileNameLength , sizeof(int) , 0 );
+    send(sock , FileName.c_str() , fileNameLength-1 , 0 );
+
+    read(sock, recvBuffer, BUFFER_SIZE);
+    read(sock, &AvlPack, sizeof(int));
+    send(sock , &ack , sizeof(int) , 0 );
+
+    string BitString = (string)recvBuffer;
+    sem_wait(&mutex1);
+        TotalAvlPack.insert(make_pair(AvlPack,thread_n));
+        PacketNoAvl[thread_n] = BitString;
+    sem_post(&mutex1);
+    return ;
+}
+
+void PieceSelection(int TotalPacket,int TotalConn, int BitMap[]){
+    int MinPackFromOneServer = (TotalPacket/TotalConn)+1;
+    int PackIndex[TotalConn], TotalPackAssign = 0;
+
+    memset(&PackIndex, 0, sizeof(PackIndex));
+    for(auto it = TotalAvlPack.begin(); it != TotalAvlPack.end(); it++){
+        string PackS = PacketNoAvl[it->second];
+        int TotalSelectedPiece = 0, Loop = 0;
+
+        while((TotalSelectedPiece < MinPackFromOneServer) && (it->first > TotalSelectedPiece) && (Loop < TotalPacket)){
+            if(BitMap[Loop] == -1 && (PackS[Loop]-'0')){
+                BitMap[Loop] = it->second;
+                TotalSelectedPiece++;
+            }
+            Loop++;
+        }
+        if(Loop < TotalPacket && it->first >= MinPackFromOneServer)
+            PackIndex[it->second] = Loop;
+    }
+    for(int i=0;i<TotalPacket;i++)
+        if(BitMap[i] >= 0)
+            TotalPackAssign++;
+        
+    int index;
+    while(1) {
+        if(TotalPackAssign < TotalPacket){
+            for(int ConNo=0; ConNo < TotalConn; ConNo++){
+                if((index = PackIndex[ConNo]) > 0){
+                    string PackS = PacketNoAvl[ConNo];
+                    while(!(PackS[index]-'0') && (index < TotalPacket)){
+                        index++;
+                    } 
+                    if((index < TotalPacket) && (BitMap[index] == -1)){
+                        BitMap[index] = ConNo;
+                        TotalPackAssign++;
+                        PackIndex[ConNo] = ++index;
+                    }
+                }
+            }
+        }
+        else break;
+    }
     return ;
 }
 

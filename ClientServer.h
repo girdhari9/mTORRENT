@@ -28,3 +28,5 @@ void RecieveData(int, string, int);
 string ReadSHA(int);
 void ReadFileByLine(int, int);
 void RecieveBitVector(int ,string ,int ,int, int, int, int, ofstream &output);
+void PieceSelection(int ,int ,int BitMap[]);
+void BitVectorRequestToServers(string , int , string , int );

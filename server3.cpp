@@ -19,6 +19,8 @@ using namespace std;
 sem_t mutex1;
 void ServerConnection();
 void Communication(int server_fd,struct sockaddr_in address);
+void BitVectorDetailSend(int server_fd,struct sockaddr_in address);
+vector<int> BitVector(2000,1);
 
 int main(){ 
     sem_init(&mutex1, 0, 1);
@@ -52,7 +54,8 @@ void ServerConnection(){
         perror("listen"); 
         exit(EXIT_FAILURE); printf("[+]server started...\n");
     }
-    Communication(server_fd,address);
+    BitVectorDetailSend(server_fd,address);
+    // Communication(server_fd,address);
 }
 
 void Communication(int server_fd,struct sockaddr_in address){
@@ -148,6 +151,53 @@ void Communication(int server_fd,struct sockaddr_in address){
         }
         else{
             cout<<"[+]server busy...\n";
+        }
+    }
+}
+
+void BitVectorDetailSend(int server_fd,struct sockaddr_in address){
+
+    int new_socket,addrlen = sizeof(address);
+    printf("[+]server started...\n");
+    while(1){
+        printf("[+]Listening...\n");
+        if ((new_socket = accept(server_fd, (struct sockaddr *)&address,(socklen_t*)&addrlen))<0){ 
+            perror("accept"); 
+            exit(EXIT_FAILURE); 
+        } 
+        
+        if(fork() == 0){
+            close(server_fd);
+
+            char recvBuffer[BUFFER_SIZE];
+            char sendBuffer[BUFFER_SIZE]; 
+            memset(&recvBuffer, '\0',BUFFER_SIZE);
+            memset(&sendBuffer, '1',BUFFER_SIZE);
+
+            size_t read_size;
+            int ack, DataPackNumber;
+            printf("Client is ready...\n");
+
+            int fileNameLength;
+
+            read(new_socket, &fileNameLength, sizeof(int));
+            read(new_socket, recvBuffer, fileNameLength-1);
+
+            printf("> Sending file details...\n");
+
+            send(new_socket, sendBuffer, BUFFER_SIZE, 0);
+            
+            int AvlPack = 0;
+            for(int i = 0; i < BUFFER_SIZE; i++){
+                if((sendBuffer[i]-'0')) AvlPack++;
+            }
+            send(new_socket, &AvlPack, sizeof(int), 0);
+            read(new_socket, &ack, sizeof(int));
+            
+            
+            printf("> Data sent!\n");
+            close(new_socket);
+            exit(0);
         }
     }
 }
