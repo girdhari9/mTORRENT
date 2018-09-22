@@ -18,16 +18,18 @@
 #define BUFFER_SIZE 2000
 #define DataSize 1024
 #define FILE_SIZE 524288
+extern int PORT;
 
 using namespace std;
-void mtorrentFile(string,string);
-int CalculateSHA(string,int);
+string mtorrentFile(string,string);
+string CalculateSHA(string,int);
+void SendToSeederList(string , string, int, string);
 
 void ServerConnection();
 void tokenized(string );
 void Communication(int server_fd,struct sockaddr_in address);
 
-int FunctionCalling(string);
+int FunctionCalling(string,int,string, string);
 int clientConnection(string, int, string &, int, int, int,vector<int> BitMap1, int, ofstream &output);
 int TrackerConnection(string, int);
 void GetSeedersDetails(int, string);

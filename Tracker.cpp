@@ -58,62 +58,109 @@ void Communication(int server_fd,struct sockaddr_in address){
             perror("accept"); 
             exit(EXIT_FAILURE); 
         } 
-        
-        if(fork() == 0){
-            close(server_fd);
-            char recvBuffer[BUFFER_SIZE];
-            char sendBuffer[BUFFER_SIZE]; 
-            memset(&recvBuffer, '\0',BUFFER_SIZE);
-            memset(&sendBuffer, '\0',BUFFER_SIZE);
+        int RequestType;
+        read(new_socket , &RequestType, sizeof(int));
+        if(RequestType == 1){
+            if(fork() == 0){
+                char recvBuffer[BUFFER_SIZE];
+                memset(&recvBuffer, '\0',BUFFER_SIZE);
+                map<string,string> SeederListMap;
 
-            printf("> Seeders Detail Sending...\n");
-            int read_size, index = 0, ack = 2;
-            read(new_socket , recvBuffer, 20);
-            send(new_socket , &ack , sizeof(int),0);
+                printf("> You are adding in seederlist...\n");
 
-            int TrackerFileD = open("trackerfile.txt", O_RDONLY, O_SYNC);
-            while (read(TrackerFileD, &sendBuffer[index], 1) == 1) {
-			    if (sendBuffer[index] == '\n' || sendBuffer[index] == 0x0) {
-			    	string sb = (string)sendBuffer;
-			    	string rb = (string)recvBuffer;
-			    	if(sb.substr(0,sb.size()-1) == rb){
-			    		ReadSeedersDetail(new_socket,TrackerFileD);
-                        cout<<"> Seeders details sent!\n";
-                        close(new_socket);
-                        exit(0);
-			    	}
-			    	memset(&sendBuffer, '\0',BUFFER_SIZE);
-			    	index = 0; continue;
-			    }
-			    index++;
-			}
+                int read_size, index = 0, ack = 2,flag = 0, port, check = 1;
+                int RootPathSize;
+                read(new_socket , recvBuffer, 20);
+
+                string SHA = (string)recvBuffer;
+                char RootPath[1000];
+                memset(&recvBuffer, '\0',1000);
+
+                read(new_socket, &read_size, sizeof(int));
+                read(new_socket, recvBuffer, read_size);
+                read(new_socket, &port, sizeof(int));
+                read(new_socket, &RootPathSize, sizeof(int));
+                read(new_socket, RootPath, RootPathSize);
+
+                string NewSeeder = (string)recvBuffer + ":" + to_string(port) + " " + (string)RootPath;
+
+                ifstream TrackerFileD("trackerfile.txt", ifstream::binary);
+                string Seeders,shaline;
+                if(TrackerFileD.is_open()){
+                    while (getline(TrackerFileD,shaline)) {
+                        getline(TrackerFileD,Seeders);
+                        if(check && shaline == SHA){
+                            Seeders = Seeders + " " + NewSeeder;
+                            check = 0;
+                            SeederListMap[shaline] = Seeders;
+                        }
+                        else
+                            SeederListMap[shaline] = Seeders;
+                    }
+                    if(check) SeederListMap[SHA] = NewSeeder;
+                    TrackerFileD.close();
+                }
+                else{
+                    cout<<"Error: Please Try to connect after some time\n";
+                }
+                ofstream TrackerFile("trackerfile.txt", ofstream::binary);
+                if(TrackerFile.is_open()){
+                    for(auto it = SeederListMap.begin(); it != SeederListMap.end(); it++){
+                        TrackerFile << (it->first).c_str();
+                        TrackerFile << "\n";
+                        TrackerFile << (it->second).c_str();
+                        TrackerFile << "\n";
+                    }
+                    TrackerFile.close();
+                }
+                else{
+                    cout<<"Unable to add you in seeder list\n";
+                }
+                close(new_socket);
+                exit(0);
+            }
+            else{
+                cout<<"[+]server busy...\n";
+            }
         }
         else{
-            cout<<"[+]server busy...\n";
-        }
-    }
-}
+            if(fork() == 0){
+                close(server_fd);
+                char recvBuffer[BUFFER_SIZE];
+                char sendBuffer[BUFFER_SIZE]; 
+                memset(&recvBuffer, '\0',BUFFER_SIZE);
+                memset(&sendBuffer, '\0',BUFFER_SIZE);
 
-void ReadSeedersDetail(int new_socket,int TrackerFileD){
-    int index = 0, ack = 1;
-    char sendBuffer[BUFFER_SIZE];
-    memset(&sendBuffer, '\0',BUFFER_SIZE);
-    while (read(TrackerFileD, &sendBuffer[index], 1) == 1){
-        if (sendBuffer[index] == '\n' || sendBuffer[index] == 0x0){
-            if(sendBuffer[0] != '[' && sendBuffer[0] != ']'){
-                send(new_socket , &index , sizeof(int),0);
-                read(new_socket , &ack, sizeof(int));
-                send(new_socket , (char *)sendBuffer, index,0);
-                index = 0;
-                continue;
+                printf("> Seeders Detail Sending...\n");
+                int read_size, index = 0, ack = 2;
+                read(new_socket , recvBuffer, 20);
+                send(new_socket , &ack , sizeof(int),0);
+
+                ifstream TrackerFileD("trackerfile.txt", ifstream::binary);
+                string Seeders,shaline;
+                if(TrackerFileD.is_open()){
+                    while (getline(TrackerFileD,shaline)) {
+                        getline(TrackerFileD,Seeders);
+                        if(shaline == (string)recvBuffer){
+                            int TotalSeeders = Seeders.size();
+                            send(new_socket , &TotalSeeders , sizeof(int),0);
+                            send(new_socket , Seeders.c_str(), index,0);
+                            cout<<"> Seeders details sent!\n";
+                            close(new_socket);
+                            exit(0);
+                        }
+                    }
+                    TrackerFileD.close();
+                }
+                else{
+                    cout<<"Error: Please Try to connect after some time\n";
+                }
             }
-            if(sendBuffer[0] == ']'){
-                index = 1;
-                send(new_socket , &index , sizeof(int),0);
-                return ;
+            else{
+                cout<<"[+]server busy...\n";
             }
-            memset(&sendBuffer, '\0',BUFFER_SIZE);
+            close(new_socket);
+            exit(0);
         }
-        index++;
     }
 }

@@ -6,11 +6,12 @@ sem_t mutex1;
 int TotalConn;
 map<int,string> PacketNoAvl;
 multimap<int,int> TotalAvlPack;
+extern int PORT;
 
-
-int FunctionCalling(string filename){
+int FunctionCalling(string filename, int RequestType,string SHA_TO_Add, string root_path){
     sem_init(&mutex1, 0, 1);
-
+    int FileSize;
+    string FileName, SHA;
     if(filename.size() > 9 && filename.substr(filename.size()-9) != ".mtorrent"){
         cout<<"\n> Please give name of mtorrent file!\n";
         return 0;
@@ -27,65 +28,70 @@ int FunctionCalling(string filename){
     else{
         cout<<"> Connected with Tracker: "<<mTorrentFileData[0]<<":"<<mTorrentFileData[1]<<"";
     }
-    ReadFileByLine(TorrentFileD,0);
-    cout<<"> You are requesting to download: "<<mTorrentFileData[0];
-    string FileName = mTorrentFileData[0];
-
-    ReadFileByLine(TorrentFileD,0);
-    cout<<"> File Size: "<<mTorrentFileData[0];
-    int FileSize = stoi(mTorrentFileData[0]);
-
-    ReadFileByLine(TorrentFileD,0);
-    string SHA = ReadSHA(TorrentFileD);
-    GetSeedersDetails(sock,SHA);
-
-    cout<<"> Tracker Connection Closed!\n";
-
-    // Connections using multithreads
-    
-    int ConDetailIndex = 0;
-    TotalConn = ConDetail.size()/3;
-
-    int LastPartSize = 0;
-    int TotalPacket = FileSize/DataSize;
-    LastPartSize = FileSize - TotalPacket * DataSize;
-
-    if(LastPartSize) TotalPacket++;
-
-    int BitMap[TotalPacket];
-    memset(&BitMap, -1, sizeof(BitMap));
-
-    thread *threadptr = new thread[TotalConn];
-    for(int thread_n = 0; thread_n < TotalConn; thread_n++,ConDetailIndex+=3){
-        threadptr[thread_n] = thread(BitVectorRequestToServers,ConDetail[ConDetailIndex],atoi(ConDetail[ConDetailIndex+1].c_str()),ref(FileName),thread_n);
+    if(RequestType == 1){
+        SendToSeederList(filename,SHA_TO_Add,sock,root_path);
+        close(sock);
+        printf("> Connection closed!\n");
     }
+    else{
+        ReadFileByLine(TorrentFileD,0);
+        cout<<"> You are requesting to download: "<<mTorrentFileData[0];
+        FileName = mTorrentFileData[0];
+
+        ReadFileByLine(TorrentFileD,0);
+        cout<<"> File Size: "<<mTorrentFileData[0];
+        FileSize = stoi(mTorrentFileData[0]);
+
+        ReadFileByLine(TorrentFileD,0);
+        SHA = ReadSHA(TorrentFileD);
+        GetSeedersDetails(sock,SHA);
+
+        cout<<"> Tracker Connection Closed!\n";
+        // Connections using multithreads
     
-    for(int thread_n=0; thread_n < TotalConn; thread_n++,ConDetailIndex++){
-        threadptr[thread_n].join();
+        int ConDetailIndex = 0;
+        TotalConn = ConDetail.size()/3;
+
+        int LastPartSize = 0;
+        int TotalPacket = FileSize/DataSize;
+        LastPartSize = FileSize - TotalPacket * DataSize;
+
+        if(LastPartSize) TotalPacket++;
+
+        int BitMap[TotalPacket];
+        memset(&BitMap, -1, sizeof(BitMap));
+
+        thread *threadptr = new thread[TotalConn];
+        for(int thread_n = 0; thread_n < TotalConn; thread_n++,ConDetailIndex+=3){
+            threadptr[thread_n] = thread(BitVectorRequestToServers,ConDetail[ConDetailIndex],atoi(ConDetail[ConDetailIndex+1].c_str()),ref(FileName),thread_n);
+        }
+        
+        for(int thread_n=0; thread_n < TotalConn; thread_n++,ConDetailIndex++){
+            threadptr[thread_n].join();
+        }
+
+        delete [] threadptr;
+
+        PieceSelection(TotalPacket,TotalConn,BitMap);
+
+        vector<int> BitMap1(BitMap, BitMap + sizeof(BitMap) / sizeof(BitMap[0]));
+
+        ConDetailIndex = 0;
+        ofstream output;
+        string NewFileName = "new_" + FileName.substr(0,FileName.size()-1);
+        output.open(NewFileName.c_str(), ofstream::binary);
+
+        thread *Threadptr = new thread[TotalConn];
+        for(int thread_n = 0; thread_n < TotalConn; thread_n++,ConDetailIndex+=3){
+            Threadptr[thread_n] = thread(clientConnection,ConDetail[ConDetailIndex],atoi(ConDetail[ConDetailIndex+1].c_str()),ref(FileName),FileSize,LastPartSize,TotalPacket,BitMap1,thread_n,ref(output));
+        }
+        
+        for(int thread_n=0; thread_n < TotalConn; thread_n++,ConDetailIndex++){
+            Threadptr[thread_n].join();
+        }
+        //End of MultithNewFileNameread
+        output.close();
     }
-
-    delete [] threadptr;
-
-    PieceSelection(TotalPacket,TotalConn,BitMap);
-
-    vector<int> BitMap1(BitMap, BitMap + sizeof(BitMap) / sizeof(BitMap[0]));
-
-    ConDetailIndex = 0;
-    ofstream output;
-    string NewFileName = "new_" + FileName.substr(0,FileName.size()-1);
-    output.open(NewFileName.c_str(), ofstream::binary);
-
-    thread *Threadptr = new thread[TotalConn];
-    for(int thread_n = 0; thread_n < TotalConn; thread_n++,ConDetailIndex+=3){
-        Threadptr[thread_n] = thread(clientConnection,ConDetail[ConDetailIndex],atoi(ConDetail[ConDetailIndex+1].c_str()),ref(FileName),FileSize,LastPartSize,TotalPacket,BitMap1,thread_n,ref(output));
-    }
-    
-    for(int thread_n=0; thread_n < TotalConn; thread_n++,ConDetailIndex++){
-        Threadptr[thread_n].join();
-    }
-    //End of MultithNewFileNameread
-    output.close();
-    
     // RecieveData(sock,FileName,FileSize);
     sem_destroy(&mutex1);
     return 0;
@@ -163,47 +169,6 @@ void GetSeedersDetails(int sock,string SHA){
         ConDetailIndex+=3;
     }
     return ;
-}
-
-void RecieveData(int sock,string recvFileName, int FileSize){
-    char sendBuffer[BUFFER_SIZE];
-    char recvBuffer[BUFFER_SIZE]; 
-    memset(&recvBuffer, '\0',BUFFER_SIZE);
-    memset(&sendBuffer, '\0',BUFFER_SIZE);
-
-    cout<<"[+]system started...\n"; 
-    cout<<"[+]system connecting...\n";
-
-    
-    int read_size, ack;
-    long long int count = 1,TotalSize = 0;
-
-    int fileNameLength = recvFileName.length();
-    send(sock , &fileNameLength , sizeof(int) , 0 );
-    read(sock, &ack, sizeof(int));
-    send(sock , recvFileName.c_str() , fileNameLength-1 , 0 );
-    read(sock, &ack, sizeof(int));
-
-    cout<<"[+]system connected...\n> recieving data...\n";
-
-    recvFileName = "new_"+recvFileName.substr(0,recvFileName.size()-1);
-    int recvFilePtr = open(recvFileName.c_str(), O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR);
-
-    ack = 1;
-    while((read_size = read(sock, recvBuffer, DataSize)) > 0){
-        TotalSize += read_size;
-        write(recvFilePtr,recvBuffer,read_size);
-        memset(&recvBuffer, '\0',BUFFER_SIZE);
-        send(sock, &count, sizeof(int), 0 );
-        count++;
-        if(FileSize == TotalSize){
-            cout<<"> Data Received\n";
-            break;
-        }
-    }
-    close(sock);
-    close(recvFilePtr);
-    printf("> Connection closed!\n");
 }
 
 string ReadSHA(int TorrentFileD){
@@ -456,5 +421,28 @@ void PieceSelection(int TotalPacket,int TotalConn, int BitMap[]){
         }
         else break;
     }
+    return ;
+}
+
+void SendToSeederList(string filename, string SHA, int sock, string root_path){
+    char sendBuffer[BUFFER_SIZE];
+    memset(&sendBuffer, '\0',BUFFER_SIZE);
+
+    cout<<"[+]system started...\n"; 
+    cout<<"[+]system connecting...\n";
+
+    int RequestType = 1;
+    string IP = "127.0.0.1", FilePath;
+    int IPsize = IP.size(), RootPathSize = root_path.size();
+
+    send(sock , &RequestType , sizeof(int) , 0 );
+    send(sock , SHA.c_str() , SHA_DIGEST_LENGTH, 0 );
+
+    send(sock , &IPsize, sizeof(int), 0 );
+    send(sock , IP.c_str() , IPsize, 0 );
+    send(sock , &PORT , sizeof(int) , 0 );
+    send(sock , &RootPathSize , sizeof(int) , 0 );
+    send(sock , root_path.c_str() , RootPathSize , 0 );
+
     return ;
 }
