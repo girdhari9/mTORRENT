@@ -8,7 +8,6 @@
 #include <netinet/in.h> 
 #include<fcntl.h>
 #include<arpa/inet.h>
-#include<semaphore.h> 
 #include<sys/wait.h>
 
 #define PORT 6000
@@ -16,16 +15,14 @@
 #define DataSize 1024
 using namespace std;
 
-sem_t mutex1;
+void SendData(int );
 void ServerConnection();
 void Communication(int server_fd,struct sockaddr_in address);
-void BitVectorDetailSend(int server_fd,struct sockaddr_in address);
+void BitVectorDetailSend(int );
 vector<int> BitVector(2000,1);
 
 int main(){ 
-    sem_init(&mutex1, 0, 1);
     ServerConnection();
-    sem_destroy(&mutex1);
     return 0; 
 } 
 
@@ -54,13 +51,12 @@ void ServerConnection(){
         perror("listen"); 
         exit(EXIT_FAILURE); printf("[+]server started...\n");
     }
-    BitVectorDetailSend(server_fd,address);
-    // Communication(server_fd,address);
+    Communication(server_fd,address);
+    return ;
 }
 
 void Communication(int server_fd,struct sockaddr_in address){
-
-    int new_socket,addrlen = sizeof(address);
+    int new_socket,addrlen = sizeof(address), RequestType;
     printf("[+]server started...\n");
     while(1){
         printf("[+]Listening...\n");
@@ -68,134 +64,106 @@ void Communication(int server_fd,struct sockaddr_in address){
             perror("accept"); 
             exit(EXIT_FAILURE); 
         } 
-        
-        if(fork() == 0){
-            char recvBuffer[BUFFER_SIZE];
-            char sendBuffer[BUFFER_SIZE]; 
-            memset(&recvBuffer, '\0',BUFFER_SIZE);
-            memset(&sendBuffer, '\0',BUFFER_SIZE);
-
-            size_t read_size;
-            int ack, DataPackNumber;
-            printf("Client is ready...\n");
-
-            int fileNameLength,LastPartSize = 0,LoopLimit, TotalConn;
-
-            read(new_socket, &TotalConn, sizeof(int));
-            send(new_socket, &ack, sizeof(int), 0);
-            read(new_socket, &LoopLimit, sizeof(int));
-            send(new_socket, &ack, sizeof(int), 0);
-            read(new_socket, &LastPartSize, sizeof(int));
-            send(new_socket, &ack, sizeof(int), 0);
-            read(new_socket, &fileNameLength, sizeof(int));
-            send(new_socket, &ack, sizeof(int), 0);
-            read(new_socket, recvBuffer, fileNameLength-1);
-            send(new_socket, &ack, sizeof(int), 0);
-
-            ifstream input;
-            input.open(recvBuffer,ifstream::binary);
-            memset(&recvBuffer, '\0',BUFFER_SIZE);
-
-            printf("> Sending data...\n");
-
-            int thread_n;
-            read(new_socket, &thread_n, sizeof(int));
-            send(new_socket, &ack, sizeof(int), 0);
-            read(new_socket, &ack, sizeof(int));
-            
-            int index = thread_n * DataSize, LoopValue=0; 
-            while(LoopValue < LoopLimit){
-                input.seekg (index);
-                input.read(sendBuffer,DataSize);
-
-                send(new_socket , (char *)sendBuffer, DataSize,0);
-                read( new_socket , &DataPackNumber, sizeof(int));
-                memset(&sendBuffer, '\0',BUFFER_SIZE);
-                LoopValue++;
-
-                index += TotalConn * DataSize;
-                
-            }
-            int ExtraLoopForThread = 0;
-            read(new_socket, &ExtraLoopForThread, sizeof(int));
-            send(new_socket, &ack, sizeof(int), 0);
-
-            LoopValue = 0;
-            while(LoopValue < ExtraLoopForThread){
-                if(thread_n == ExtraLoopForThread-1){
-                    input.seekg (index);
-                    if(LastPartSize)
-                        input.read(sendBuffer,LastPartSize);
-                    else input.read(sendBuffer,DataSize);
-
-                    send(new_socket , (char *)sendBuffer, LastPartSize,0);
-                    memset(&sendBuffer, '\0',BUFFER_SIZE);
-                    index += TotalConn * DataSize;
-                }
-                else{
-                    input.seekg (index);
-                    input.read(sendBuffer,DataSize);
-
-                    send(new_socket , (char *)sendBuffer, LastPartSize,0);
-                    memset(&sendBuffer, '\0',BUFFER_SIZE);
-                    index += TotalConn * DataSize;
-                }
-                read(new_socket , &DataPackNumber, sizeof(int));
-                LoopValue++;
-            }
-            printf("> Data sent!\n");
-            close(new_socket);
-            exit(0);
-        }
-        else{
-            cout<<"[+]server busy...\n";
-        }
+        read(new_socket, &RequestType, sizeof(int));
+        if(RequestType == 1)
+            BitVectorDetailSend(new_socket);
+        else
+            SendData(new_socket);
     }
 }
 
-void BitVectorDetailSend(int server_fd,struct sockaddr_in address){
+void BitVectorDetailSend(int new_socket){
 
-    int new_socket,addrlen = sizeof(address);
-    printf("[+]server started...\n");
-    while(1){
-        printf("[+]Listening...\n");
-        if ((new_socket = accept(server_fd, (struct sockaddr *)&address,(socklen_t*)&addrlen))<0){ 
-            perror("accept"); 
-            exit(EXIT_FAILURE); 
-        } 
-        
-        if(fork() == 0){
-            close(server_fd);
+    if(fork() == 0){
+        // close(server_fd);
 
-            char recvBuffer[BUFFER_SIZE];
-            char sendBuffer[BUFFER_SIZE]; 
-            memset(&recvBuffer, '\0',BUFFER_SIZE);
-            memset(&sendBuffer, '1',BUFFER_SIZE);
+        char recvBuffer[BUFFER_SIZE];
+        char sendBuffer[BUFFER_SIZE]; 
+        memset(&recvBuffer, '\0',BUFFER_SIZE);
+        memset(&sendBuffer, '1',BUFFER_SIZE);
 
-            size_t read_size;
-            int ack, DataPackNumber;
-            printf("Client is ready...\n");
+        size_t read_size;
+        int ack, DataPackNumber;
+        printf("Client is ready...\n");
 
-            int fileNameLength;
+        int fileNameLength;
 
-            read(new_socket, &fileNameLength, sizeof(int));
-            read(new_socket, recvBuffer, fileNameLength-1);
+        read(new_socket, &fileNameLength, sizeof(int));
+        read(new_socket, recvBuffer, fileNameLength-1);
 
-            printf("> Sending file details...\n");
+        send(new_socket, sendBuffer, BUFFER_SIZE, 0);
 
-            send(new_socket, sendBuffer, BUFFER_SIZE, 0);
-            
-            int AvlPack = 0;
-            for(int i = 0; i < BUFFER_SIZE; i++){
-                if((sendBuffer[i]-'0')) AvlPack++;
-            }
-            send(new_socket, &AvlPack, sizeof(int), 0);
-            read(new_socket, &ack, sizeof(int));
-            
-            
-            printf("> Data sent!\n");
-            close(new_socket);
-            exit(0);
+        int AvlPack = 0;
+        for(int i = 0; i < BUFFER_SIZE; i++){
+            if((sendBuffer[i]-'0')) AvlPack++;
         }
+        send(new_socket, &AvlPack, sizeof(int), 0);
+        read(new_socket, &ack, sizeof(int));
+        
+        close(new_socket);
+        exit(0);
+    }
+    else{
+        cout<<"[+]server busy...\n";
+    }
+}
+
+void SendData(int new_socket){
+    if(fork() == 0){
+        char recvBuffer[BUFFER_SIZE];
+        char sendBuffer[BUFFER_SIZE]; 
+        memset(&recvBuffer, '\0',BUFFER_SIZE);
+        memset(&sendBuffer, '\0',BUFFER_SIZE);
+
+        size_t read_size;
+        int ack, DataPackNumber;
+
+        int fileNameLength,LastPartSize = 0,TotalPacket, TotalConn;
+
+        read(new_socket, &TotalPacket, sizeof(int));
+        send(new_socket, &ack, sizeof(int), 0);
+        read(new_socket, &LastPartSize, sizeof(int));
+        send(new_socket, &ack, sizeof(int), 0);
+        read(new_socket, &fileNameLength, sizeof(int));
+        send(new_socket, &ack, sizeof(int), 0);
+        read(new_socket, recvBuffer, fileNameLength-1);
+        send(new_socket, &ack, sizeof(int), 0);
+
+        ifstream input;
+        input.open(recvBuffer,ifstream::binary);
+        memset(&recvBuffer, '\0',BUFFER_SIZE);
+
+        printf("> Sending data...\n");
+
+        read(new_socket, &ack, sizeof(int));
+        
+        int index, LoopValue=0, PieceNo = -1; 
+        while(PieceNo < TotalPacket){
+            read(new_socket, &PieceNo, sizeof(int));
+            index = PieceNo * DataSize;
+            input.seekg (index);
+
+            if(PieceNo == TotalPacket-1){
+                if(LastPartSize){
+                    input.read(sendBuffer,LastPartSize);
+                    send(new_socket , (char *)sendBuffer, LastPartSize,0);
+                }
+                else{
+                    input.read(sendBuffer,DataSize);
+                    send(new_socket , (char *)sendBuffer, DataSize,0);
+                }
+            }
+            else{
+                input.read(sendBuffer,DataSize);
+                send(new_socket , (char *)sendBuffer, DataSize,0);
+            }
+            memset(&sendBuffer, '\0',BUFFER_SIZE);
+        }
+        printf("> Data sent!\n");
+        close(new_socket);
+        exit(0);
+    }
+    else{
+        cout<<"[+]server busy...\n";
     }
 }

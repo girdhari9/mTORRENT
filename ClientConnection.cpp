@@ -50,23 +50,14 @@ int FunctionCalling(string filename){
     int TotalPacket = FileSize/DataSize;
     LastPartSize = FileSize - TotalPacket * DataSize;
 
-    
-    int ConNoOfLastPart = TotalPacket % TotalConn;
-
-    int LoopLimit = TotalPacket / TotalConn;
-    int ExtraLoopForThread = TotalPacket % TotalConn;
-
-    if(LastPartSize){
-        TotalPacket++;
-        ExtraLoopForThread++;
-    }
+    if(LastPartSize) TotalPacket++;
 
     int BitMap[TotalPacket];
     memset(&BitMap, -1, sizeof(BitMap));
 
     thread *threadptr = new thread[TotalConn];
     for(int thread_n = 0; thread_n < TotalConn; thread_n++,ConDetailIndex+=3){
-            threadptr[thread_n] = thread(BitVectorRequestToServers,ConDetail[ConDetailIndex],atoi(ConDetail[ConDetailIndex+1].c_str()),ref(FileName),thread_n);
+        threadptr[thread_n] = thread(BitVectorRequestToServers,ConDetail[ConDetailIndex],atoi(ConDetail[ConDetailIndex+1].c_str()),ref(FileName),thread_n);
     }
     
     for(int thread_n=0; thread_n < TotalConn; thread_n++,ConDetailIndex++){
@@ -77,25 +68,25 @@ int FunctionCalling(string filename){
 
     PieceSelection(TotalPacket,TotalConn,BitMap);
 
+    vector<int> BitMap1(BitMap, BitMap + sizeof(BitMap) / sizeof(BitMap[0]));
+
+    ConDetailIndex = 0;
     ofstream output;
     string NewFileName = "new_" + FileName.substr(0,FileName.size()-1);
     output.open(NewFileName.c_str(), ofstream::binary);
 
-    thread *threadptr = new thread[TotalConn];
+    thread *Threadptr = new thread[TotalConn];
     for(int thread_n = 0; thread_n < TotalConn; thread_n++,ConDetailIndex+=3){
-        if(ConNoOfLastPart == thread_n)
-            threadptr[thread_n] = thread(clientConnection,ConDetail[ConDetailIndex],atoi(ConDetail[ConDetailIndex+1].c_str()),ref(FileName),FileSize,LastPartSize,LoopLimit,ExtraLoopForThread,thread_n,ref(output));
-        else
-            threadptr[thread_n] = thread(clientConnection,ConDetail[ConDetailIndex],atoi(ConDetail[ConDetailIndex+1].c_str()),ref(FileName),FileSize,0,LoopLimit,ExtraLoopForThread,thread_n,ref(output));
+        Threadptr[thread_n] = thread(clientConnection,ConDetail[ConDetailIndex],atoi(ConDetail[ConDetailIndex+1].c_str()),ref(FileName),FileSize,LastPartSize,TotalPacket,BitMap1,thread_n,ref(output));
     }
     
     for(int thread_n=0; thread_n < TotalConn; thread_n++,ConDetailIndex++){
-        threadptr[thread_n].join();
+        Threadptr[thread_n].join();
     }
     //End of MultithNewFileNameread
     output.close();
     
-    RecieveData(sock,FileName,FileSize);
+    // RecieveData(sock,FileName,FileSize);
     sem_destroy(&mutex1);
     return 0;
 }
@@ -252,8 +243,7 @@ void ReadFileByLine(int TrackerFileD,int flag){
     }
     return ;
 }
-
-int clientConnection(string IPaddress,int PORT,string recvFileName, int FileSize, int LastPartSize, int LoopLimit, int ExtraLoopForThread, int thread_n, ofstream &output){
+int clientConnection(string IPaddress,int PORT,string &recvFileName, int FileSize, int LastPartSize, int TotalPacket, vector<int> BitMap1, int thread_n, ofstream &output){
     int sock = 0; 
     struct sockaddr_in serv_addr;
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
@@ -285,24 +275,23 @@ int clientConnection(string IPaddress,int PORT,string recvFileName, int FileSize
         cout<<"> You are connected with: "<<IPaddress<<":"<<PORT<<"\n";
         sem_post(&mutex1);
     }
-    RecieveBitVector(sock,recvFileName,FileSize,LastPartSize,LoopLimit,ExtraLoopForThread,thread_n, ref(output));
+    int DataRequest = 2;
+    send(sock , &DataRequest , sizeof(int) , 0 );
+    RecieveBitVector(sock,recvFileName,FileSize,LastPartSize,TotalPacket,BitMap1,thread_n, ref(output));
     return 0;
 }
 
-void RecieveBitVector(int sock,string recvFileName, int FileSize, int LastPartSize, int LoopLimit, int ExtraLoopForThread, int thread_n, ofstream &output){
+void RecieveBitVector(int sock,string recvFileName, int FileSize, int LastPartSize, int TotalPacket, vector<int> BitMap1, int thread_n, ofstream &output){
     char sendBuffer[BUFFER_SIZE];
     char recvBuffer[BUFFER_SIZE]; 
     memset(&recvBuffer, '\0',BUFFER_SIZE);
     memset(&sendBuffer, '\0',BUFFER_SIZE);
 
-    int read_size, ack;
-    long long int count = 0;
+    int ack;
 
     int fileNameLength = recvFileName.length();
 
-    send(sock , &TotalConn , sizeof(int) , 0 );
-    read(sock, &ack, sizeof(int));
-    send(sock , &LoopLimit , sizeof(int) , 0 );
+    send(sock , &TotalPacket , sizeof(int) , 0 );
     read(sock, &ack, sizeof(int));
     send(sock , &LastPartSize , sizeof(int) , 0 );
     read(sock, &ack, sizeof(int));
@@ -312,67 +301,54 @@ void RecieveBitVector(int sock,string recvFileName, int FileSize, int LastPartSi
     read(sock, &ack, sizeof(int));
 
     cout<<"[+]system connected...\n> recieving data...\n";
-
+    fflush(stdout);
     ack = 1;
 
-    int LoopValue=0,index = thread_n * DataSize;
-    send(sock , &thread_n, sizeof(int) , 0);
-    read(sock, &ack, sizeof(int));
+    int PieceNo=0, index;
     send(sock , &ack, sizeof(int) , 0);
-    while(LoopValue < LoopLimit){
-        read_size = read(sock, recvBuffer, DataSize);
 
-        sem_wait(&mutex1);
-            output.seekp(index);
-            output.write(recvBuffer,read_size);
-            index += TotalConn * DataSize;
-            LoopValue++;
-        sem_post(&mutex1);
-        memset(&recvBuffer, '\0',BUFFER_SIZE);
-        send(sock, &count, sizeof(int), 0 );
-        count++;
-    }
-    LoopValue = 0;
-    send(sock , &ExtraLoopForThread , sizeof(int) , 0 );
-    read(sock, &ack, sizeof(int));
-
-    while(LoopValue < ExtraLoopForThread){
-        if(thread_n == ExtraLoopForThread-1){
-            if(LastPartSize){
-                read(sock, recvBuffer, LastPartSize);
-                sem_wait(&mutex1);
-                    output.seekp(index);
-                    output.write(recvBuffer,LastPartSize);
-                    index += TotalConn * DataSize;
-                    LoopValue++;
-                sem_post(&mutex1);
-            }
-            else{
-                read(sock, recvBuffer, DataSize);
-                sem_wait(&mutex1);
-                    output.seekp(index);
-                    output.write(recvBuffer,DataSize);
-                    index += TotalConn * DataSize;
-                    LoopValue++;
-                sem_post(&mutex1);
-            }
-            
-            memset(&recvBuffer, '\0',BUFFER_SIZE);
-            count++;
-        }
-        else{
+    for(int PieceNo = 0; PieceNo < TotalPacket;){
+        if(BitMap1[PieceNo] == thread_n){
+            send(sock, &PieceNo, sizeof(int), 0);
             read(sock, recvBuffer, DataSize);
 
             sem_wait(&mutex1);
+                index = PieceNo * DataSize;
+                output.seekp(index);
+                output.write(recvBuffer,DataSize);
+                PieceNo++;
+            sem_post(&mutex1);
+            memset(&recvBuffer, '\0',BUFFER_SIZE);
+        }
+        else{
+            sem_wait(&mutex1);
+                PieceNo++;
+            sem_post(&mutex1);
+        }
+    }
+    send(sock, &PieceNo, sizeof(int), 0);
+    if(BitMap1[PieceNo] == thread_n){
+        if(LastPartSize){
+            read(sock, recvBuffer, LastPartSize);
+            sem_wait(&mutex1);
+                index = PieceNo * DataSize;
+                output.seekp(index);
+                output.write(recvBuffer,LastPartSize);
+                index += TotalConn * DataSize;
+                PieceNo++;
+            sem_post(&mutex1);
+        }
+        else{
+            read(sock, recvBuffer, DataSize);
+            sem_wait(&mutex1);
+                index = PieceNo * DataSize;
                 output.seekp(index);
                 output.write(recvBuffer,DataSize);
                 index += TotalConn * DataSize;
-                LoopValue++;
+                PieceNo++;
             sem_post(&mutex1);
-            memset(&recvBuffer, '\0',BUFFER_SIZE);
-            count++;
         }
-        send(sock, &count, sizeof(int), 0 );
+        memset(&recvBuffer, '\0',BUFFER_SIZE);
     }
     cout<<"> Data Received\n";
     close(sock);
@@ -412,13 +388,17 @@ int Connection(string IPaddress,int PORT){
 void BitVectorRequestToServers(string IPaddress, int PORT, string FileName, int thread_n){
     int sock = Connection(IPaddress,PORT);
 
+    int BitMapRequest = 1;
+    send(sock , &BitMapRequest , sizeof(int) , 0 );
+
     char sendBuffer[BUFFER_SIZE];
     char recvBuffer[BUFFER_SIZE];
     memset(&recvBuffer, '\0',BUFFER_SIZE);
     memset(&sendBuffer, '\0',BUFFER_SIZE);
-    int read_size, ack = 1, AvlPack;
+    int ack = 1, AvlPack;
 
     int fileNameLength = FileName.length();
+
     send(sock , &fileNameLength , sizeof(int) , 0 );
     send(sock , FileName.c_str() , fileNameLength-1 , 0 );
 
@@ -478,4 +458,3 @@ void PieceSelection(int TotalPacket,int TotalConn, int BitMap[]){
     }
     return ;
 }
-

@@ -68,4 +68,3 @@ int CalculateSHA(string SrcFileName,int mtorrentPtr){
     close(mtorrentPtr);
     return 0;
 }
-

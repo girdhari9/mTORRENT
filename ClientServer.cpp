@@ -2,17 +2,30 @@
 #include<thread>
 using namespace std;
 
-int main(int arg, char * args[]){
-	string filename; 
-	while(1){
-		
-		cout<<"Enter Filename: ";
-		cin>>filename; 	
-		thread client (FunctionCalling, cref(filename));
-	    thread server (ServerConnection);
+vector<string> v;
 
-	    client.join();
-	    server.join();
+int main(int arg, char * args[]){
+	string cmd; 
+	while(1){
+		cout<<"Enter Command: ";
+		cin>>cmd;
+		tokenized(cmd);
+
+		if(v[0] == "share"){
+			mtorrentFile(v[1],v[2]);
+
+		}
+		else if(v[0] == "remove"){
+
+		}
+		else if(v[0] == "get" || v[0] == "Get"){
+			thread client (FunctionCalling, cref(filename));
+		    thread server (ServerConnection);
+
+		    client.join();
+		    server.join();
+		}
+		
 
 	    Jump:
 		    cout<<"Do you want to continue? [Y/N]: ";
@@ -31,4 +44,26 @@ int main(int arg, char * args[]){
 		    }
 	}
     return 0; 
-} 
+}
+
+void tokenized(string s){
+    v.erase(v.begin(),v.end());
+    for(unsigned int i = 0;i < s.size(); i++){
+        vector<char> sub_v;
+        vector<char>::iterator it;
+        while(s[i] != ' ' && i < s.size()){
+            if(s[i] == 92){ 
+                sub_v.push_back(32);
+                i += 2;
+            }
+            else{
+                sub_v.push_back(s[i]);
+                i++;
+            }
+        }
+        string t;
+        for(unsigned int j = 0; j < sub_v.size();j++)
+            t += sub_v[j];
+        v.push_back(t);
+    }
+}

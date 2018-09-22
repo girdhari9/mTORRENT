@@ -11,22 +11,29 @@
 #include<thread>
 #include<semaphore.h> 
 #include<sys/wait.h>
+#include <iomanip>
+#include <functional>
+#include <new>
 
 #define BUFFER_SIZE 2000
 #define DataSize 1024
+#define FILE_SIZE 524288
 
 using namespace std;
+void mtorrentFile(string,string);
+int CalculateSHA(string,int);
 
 void ServerConnection();
+void tokenized(string );
 void Communication(int server_fd,struct sockaddr_in address);
 
 int FunctionCalling(string);
-int clientConnection(string, int, string, int, int, int, int, int, ofstream &output);
+int clientConnection(string, int, string &, int, int, int,vector<int> BitMap1, int, ofstream &output);
 int TrackerConnection(string, int);
 void GetSeedersDetails(int, string);
 void RecieveData(int, string, int);
 string ReadSHA(int);
 void ReadFileByLine(int, int);
-void RecieveBitVector(int ,string ,int ,int, int, int, int, ofstream &output);
+void RecieveBitVector(int ,string ,int ,int, int , vector<int> BitMap1,int, ofstream &output);
 void PieceSelection(int ,int ,int BitMap[]);
 void BitVectorRequestToServers(string , int , string , int );

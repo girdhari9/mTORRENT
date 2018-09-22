@@ -74,7 +74,9 @@ void PieceSelection(int TotalPacket,int TotalConn, int BitMap[]){
         }
         else break;
     }
-    for(int i=0;i<TotalPacket;i++){
+    int i=0;
+    for(;i<TotalPacket;i++){
         cout<<BitMap[i]; 
     }
+    cout<<"\n"<<i<<" ";
 }
