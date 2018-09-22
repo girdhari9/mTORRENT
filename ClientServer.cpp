@@ -23,14 +23,19 @@ int main(int arg, char * args[]){
 			thread client (FunctionCalling, cref(mtorrentfilename),1,SHA,root_path);
 			client.join();
 		}
-		else if(v[0] == "remove"){
+		else if(cmd == "remove"){
 
 		}
 		else if(cmd == "get" || cmd == "Get"){
 			string mtorrentfilename;
 			cin>>mtorrentfilename;
 
-			thread client (FunctionCalling, cref(v[1]),0,"No",root_path);
+			if(mtorrentfilename.size() > 9 && mtorrentfilename.substr(mtorrentfilename.size()-9) != ".mtorrent"){
+        		cout<<"\n> Please give name of mtorrent file!\n";
+		        return 0;
+		    }
+		    
+			thread client (FunctionCalling, cref(mtorrentfilename),0,"No",root_path);
 		    thread server (ServerConnection);
 
 		    client.join();

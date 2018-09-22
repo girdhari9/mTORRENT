@@ -82,7 +82,7 @@ void Communication(int server_fd,struct sockaddr_in address){
                 read(new_socket, &RootPathSize, sizeof(int));
                 read(new_socket, RootPath, RootPathSize);
 
-                string NewSeeder = (string)recvBuffer + ":" + to_string(port) + " " + (string)RootPath;
+                string NewSeeder = (string)recvBuffer + " " + to_string(port) + " " + (string)RootPath;
 
                 ifstream TrackerFileD("trackerfile.txt", ifstream::binary);
                 string Seeders,shaline;
@@ -125,18 +125,14 @@ void Communication(int server_fd,struct sockaddr_in address){
         }
         else{
             if(fork() == 0){
-                close(server_fd);
                 char recvBuffer[BUFFER_SIZE];
-                char sendBuffer[BUFFER_SIZE]; 
                 memset(&recvBuffer, '\0',BUFFER_SIZE);
-                memset(&sendBuffer, '\0',BUFFER_SIZE);
 
                 printf("> Seeders Detail Sending...\n");
-                int read_size, index = 0, ack = 2;
                 read(new_socket , recvBuffer, 20);
-                send(new_socket , &ack , sizeof(int),0);
 
                 ifstream TrackerFileD("trackerfile.txt", ifstream::binary);
+
                 string Seeders,shaline;
                 if(TrackerFileD.is_open()){
                     while (getline(TrackerFileD,shaline)) {
@@ -144,10 +140,9 @@ void Communication(int server_fd,struct sockaddr_in address){
                         if(shaline == (string)recvBuffer){
                             int TotalSeeders = Seeders.size();
                             send(new_socket , &TotalSeeders , sizeof(int),0);
-                            send(new_socket , Seeders.c_str(), index,0);
+                            send(new_socket , Seeders.c_str(), TotalSeeders,0);
                             cout<<"> Seeders details sent!\n";
-                            close(new_socket);
-                            exit(0);
+                            break;
                         }
                     }
                     TrackerFileD.close();
@@ -155,12 +150,12 @@ void Communication(int server_fd,struct sockaddr_in address){
                 else{
                     cout<<"Error: Please Try to connect after some time\n";
                 }
+                close(new_socket);
+                exit(0);
             }
             else{
                 cout<<"[+]server busy...\n";
             }
-            close(new_socket);
-            exit(0);
         }
     }
 }

@@ -16,8 +16,8 @@ int FunctionCalling(string filename, int RequestType,string SHA_TO_Add, string r
         cout<<"\n> Please give name of mtorrent file!\n";
         return 0;
     }
-    int TorrentFileD = open(filename.c_str(), O_RDONLY, O_SYNC);
 
+    int TorrentFileD = open(filename.c_str(), O_RDONLY, O_SYNC);
     ReadFileByLine(TorrentFileD,1);
 
     int sock = TrackerConnection(mTorrentFileData[0],atoi(mTorrentFileData[1].c_str()));
@@ -31,9 +31,11 @@ int FunctionCalling(string filename, int RequestType,string SHA_TO_Add, string r
     if(RequestType == 1){
         SendToSeederList(filename,SHA_TO_Add,sock,root_path);
         close(sock);
+        close(TorrentFileD);
         printf("> Connection closed!\n");
     }
     else{
+
         ReadFileByLine(TorrentFileD,0);
         cout<<"> You are requesting to download: "<<mTorrentFileData[0];
         FileName = mTorrentFileData[0];
@@ -44,13 +46,20 @@ int FunctionCalling(string filename, int RequestType,string SHA_TO_Add, string r
 
         ReadFileByLine(TorrentFileD,0);
         SHA = ReadSHA(TorrentFileD);
+        SHA = SHA.substr(0,20);
+
         GetSeedersDetails(sock,SHA);
+
+        for(auto it = ConDetail.begin(); it != ConDetail.end(); it++)
+            cout<<*it<<"\n";
+    
 
         cout<<"> Tracker Connection Closed!\n";
         // Connections using multithreads
-    
         int ConDetailIndex = 0;
         TotalConn = ConDetail.size()/3;
+
+        cout<<TotalConn<<" ";
 
         int LastPartSize = 0;
         int TotalPacket = FileSize/DataSize;
@@ -122,51 +131,43 @@ int TrackerConnection(string IPaddress,int PORT){
 }
 
 void GetSeedersDetails(int sock,string SHA){
-    char sendBuffer[BUFFER_SIZE];
     char recvBuffer[BUFFER_SIZE]; 
     memset(&recvBuffer, '\0',BUFFER_SIZE);
-    memset(&sendBuffer, '\0',BUFFER_SIZE);
-
-    cout<<"[+]system started...\n"; 
-    cout<<"[+]system connecting...\n";
 
     cout<<"[+]system connected...\n";
-    printf("> recieving data...\n");
-    SHA = "abcdefghijklmnopqrst"; // Send data after reading from file
-    int ack, DataLength;
+    printf("> recieving seeders details...\n");
+
+    int DataLength, RequestType = 0;
+    send(sock , &RequestType , sizeof(int) , 0 );
+
     send(sock, SHA.c_str(), SHA_DIGEST_LENGTH, 0 );
-    read(sock, &ack, sizeof(int));
+    read(sock, &DataLength, sizeof(int));
 
-    int ConDetailIndex = 0;
-    while(1){
-        read(sock, &DataLength, sizeof(int));
-        if(DataLength < 3){
-            close(sock);
-            return ;
-        }
-        send(sock, &ack, sizeof(int),0);
-        read(sock, recvBuffer, DataLength);
+    if(DataLength < 3){
+        close(sock);
+        return ;
+    }
+    read(sock, recvBuffer, DataLength);
 
-        int index = 0;
+    int index = 0, ConDetailIndex = 0;
+
+    while(index < strlen(recvBuffer)){
         string ip_add, port_add, FileAddress;
         
-        while(recvBuffer[index] != ' '){
-            ip_add += recvBuffer[index];
-            index++;
-        }
+        while(recvBuffer[index] != ' ')
+            ip_add += recvBuffer[index++];
         ConDetail.push_back(ip_add);
 
         while(recvBuffer[++index] != ' ')
             port_add += recvBuffer[index];
         ConDetail.push_back(port_add);
 
-        while(recvBuffer[++index] != ' ')
+        while(recvBuffer[++index] != ' ' && index < strlen(recvBuffer))
             FileAddress += recvBuffer[index];
         ConDetail.push_back(FileAddress);
-        memset(&recvBuffer, '\0',BUFFER_SIZE);
-        if(ConDetailIndex == 0)
-            ConDetail[ConDetailIndex] = ConDetail[ConDetailIndex].substr(2,9);
+
         ConDetailIndex+=3;
+        index++;
     }
     return ;
 }
