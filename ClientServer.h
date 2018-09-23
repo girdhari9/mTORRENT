@@ -31,20 +31,20 @@ void tokenized(string );
 
 //Client Function
 int FunctionCalling(string,int,string, string);
-int clientConnection(string, int, string &, int, int, int,vector<int> BitMap1, int, ofstream &output);
+int clientConnection(string, int, string &, int, int, int,vector<int> BitMap1, int, ofstream &output,string);
 int TrackerConnection(string, int);
 void GetSeedersDetails(int, string);
 void RecieveData(int, string, int);
 string ReadSHA(int);
 void ReadFileByLine(int, int);
-void RecieveBitVector(int ,string ,int ,int, int , vector<int> BitMap1,int, ofstream &output);
+void RecieveDataFromServer(int ,string ,int ,int, int , vector<int> BitMap1,int, ofstream &output, string);
 void PieceSelection(int ,int ,int BitMap[]);
-void BitVectorRequestToServers(string , int , int , int);
+void BitVectorRequestToServers(string , int , int , int, string);
 
 //Server Function
 void SendData(int);
-void ServerConnection(string);
-void Communication(int server_fd,struct sockaddr_in address, string);
-void BitVectorDetailSend(int, string);
-void SetBitMap(int , int );
+void ServerConnection();
+void Communication(int server_fd,struct sockaddr_in address);
+void BitVectorDetailSend(int);
+void SetBitMap(int , int, string );
 

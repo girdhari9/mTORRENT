@@ -8,6 +8,7 @@ map<int,string> PacketNoAvl;
 multimap<int,int> TotalAvlPack;
 extern int PORT;
 extern string MYIP;
+extern map<string,string> TotalFile;
 
 int FunctionCalling(string filename, int RequestType,string SHA_TO_Add, string root_path){
     sem_init(&mutex1, 0, 1);
@@ -39,7 +40,7 @@ int FunctionCalling(string filename, int RequestType,string SHA_TO_Add, string r
         if(LastPartSize) TotalPacket++;
 
         SendToSeederList(filename,SHA_TO_Add,sock,root_path,1);
-        SetBitMap(TotalPacket, 1);
+        SetBitMap(TotalPacket, 1, SHA_TO_Add);
         close(sock);
         close(TorrentFileD);
         printf("> Connection closed!\n");
@@ -87,14 +88,14 @@ int FunctionCalling(string filename, int RequestType,string SHA_TO_Add, string r
 
         if(LastPartSize) TotalPacket++;
 
-        SetBitMap(TotalPacket, 0);
+        SetBitMap(TotalPacket, 0, SHA);
 
         int BitMap[TotalPacket];
         memset(&BitMap, -1, sizeof(BitMap));
 
         thread *threadptr = new thread[TotalConn];
         for(int thread_n = 0; thread_n < TotalConn; thread_n++,ConDetailIndex+=3){
-            threadptr[thread_n] = thread(BitVectorRequestToServers,ConDetail[ConDetailIndex],atoi(ConDetail[ConDetailIndex+1].c_str()),thread_n,TotalPacket);
+            threadptr[thread_n] = thread(BitVectorRequestToServers,ConDetail[ConDetailIndex],atoi(ConDetail[ConDetailIndex+1].c_str()),thread_n,TotalPacket,ref(SHA));
         }
         
         for(int thread_n=0; thread_n < TotalConn; thread_n++,ConDetailIndex++){
@@ -114,7 +115,7 @@ int FunctionCalling(string filename, int RequestType,string SHA_TO_Add, string r
 
         thread *Threadptr = new thread[TotalConn];
         for(int thread_n = 0; thread_n < TotalConn; thread_n++,ConDetailIndex+=3){
-            Threadptr[thread_n] = thread(clientConnection,ConDetail[ConDetailIndex],atoi(ConDetail[ConDetailIndex+1].c_str()),ref(FileName),FileSize,LastPartSize,TotalPacket,BitMap1,thread_n,ref(output));
+            Threadptr[thread_n] = thread(clientConnection,ConDetail[ConDetailIndex],atoi(ConDetail[ConDetailIndex+1].c_str()),ref(FileName),FileSize,LastPartSize,TotalPacket,BitMap1,thread_n,ref(output),ref(SHA));
         }
         
         for(int thread_n=0; thread_n < TotalConn; thread_n++,ConDetailIndex++){
@@ -221,7 +222,7 @@ void ReadFileByLine(int TrackerFileD,int flag){
     }
     return ;
 }
-int clientConnection(string IPaddress,int PORT,string &recvFileName, int FileSize, int LastPartSize, int TotalPacket, vector<int> BitMap1, int thread_n, ofstream &output){
+int clientConnection(string IPaddress,int PORT,string &recvFileName, int FileSize, int LastPartSize, int TotalPacket, vector<int> BitMap1, int thread_n, ofstream &output, string SHA){
     int sock = 0; 
     struct sockaddr_in serv_addr;
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
@@ -255,11 +256,11 @@ int clientConnection(string IPaddress,int PORT,string &recvFileName, int FileSiz
     }
     int DataRequest = 2;
     send(sock , &DataRequest , sizeof(int) , 0 );
-    RecieveBitVector(sock,recvFileName,FileSize,LastPartSize,TotalPacket,BitMap1,thread_n, ref(output));
+    RecieveDataFromServer(sock,recvFileName,FileSize,LastPartSize,TotalPacket,BitMap1,thread_n, ref(output),SHA);
     return 0;
 }
 
-void RecieveBitVector(int sock,string recvFileName, int FileSize, int LastPartSize, int TotalPacket, vector<int> BitMap1, int thread_n, ofstream &output){
+void RecieveDataFromServer(int sock,string recvFileName, int FileSize, int LastPartSize, int TotalPacket, vector<int> BitMap1, int thread_n, ofstream &output, string SHA){
     char sendBuffer[BUFFER_SIZE];
     char recvBuffer[BUFFER_SIZE]; 
     memset(&recvBuffer, '\0',BUFFER_SIZE);
@@ -294,6 +295,7 @@ void RecieveBitVector(int sock,string recvFileName, int FileSize, int LastPartSi
                 index = PieceNo * DataSize;
                 output.seekp(index);
                 output.write(recvBuffer,DataSize);
+                TotalFile[SHA][PieceNo] = '1'; 
                 PieceNo++;
             sem_post(&mutex1);
             memset(&recvBuffer, '\0',BUFFER_SIZE);
@@ -312,6 +314,7 @@ void RecieveBitVector(int sock,string recvFileName, int FileSize, int LastPartSi
                 index = PieceNo * DataSize;
                 output.seekp(index);
                 output.write(recvBuffer,LastPartSize);
+                TotalFile[SHA][PieceNo] = '1'; 
                 index += TotalConn * DataSize;
                 PieceNo++;
             sem_post(&mutex1);
@@ -322,6 +325,7 @@ void RecieveBitVector(int sock,string recvFileName, int FileSize, int LastPartSi
                 index = PieceNo * DataSize;
                 output.seekp(index);
                 output.write(recvBuffer,DataSize);
+                TotalFile[SHA][PieceNo] = '1'; 
                 index += TotalConn * DataSize;
                 PieceNo++;
             sem_post(&mutex1);
@@ -363,11 +367,13 @@ int Connection(string IPaddress,int PORT){
     return sock;
 }
 
-void BitVectorRequestToServers(string IPaddress, int PORT, int thread_n,int TotalPacket){
+void BitVectorRequestToServers(string IPaddress, int PORT, int thread_n,int TotalPacket, string SHA){
     int sock = Connection(IPaddress,PORT);
 
     int BitMapRequest = 1;
     send(sock , &BitMapRequest , sizeof(int) , 0 );
+    send(sock , &TotalPacket , sizeof(int) , 0 );
+    send(sock, SHA.c_str(), sizeof(SHA), 0);
 
     char recvBuffer[TotalPacket];
     memset(&recvBuffer, '\0',TotalPacket);
@@ -427,9 +433,9 @@ void PieceSelection(int TotalPacket,int TotalConn, int BitMap[]){
         }
         else break;
     }
-    // for(int i=0;i<TotalPacket;i++)
-    //     cout<<BitMap[i]<<" ";
-    // cout<<"\n"; fflush(stdout);
+    for(int i=0;i<TotalPacket;i++)
+        cout<<BitMap[i]<<" ";
+    cout<<"\n"; fflush(stdout);
     return ;
 }
 

@@ -3,9 +3,9 @@
 using namespace std;
 
 extern int PORT;
-char *BitBuffer = NULL;
+extern map<string,string> TotalFile;
 
-void ServerConnection(string mTorrentFilename){
+void ServerConnection(){
     int server_fd; 
     struct sockaddr_in address; 
     int opt = 1; 
@@ -30,11 +30,11 @@ void ServerConnection(string mTorrentFilename){
         perror("listen"); 
         exit(EXIT_FAILURE); printf("[+]server started...\n");
     }
-    Communication(server_fd,address,mTorrentFilename);
+    Communication(server_fd,address);
     return ;
 }
 
-void Communication(int server_fd,struct sockaddr_in address,string mTorrentFilename){
+void Communication(int server_fd,struct sockaddr_in address){
     int new_socket,addrlen = sizeof(address), RequestType;
     printf("[+]server started...\n");
     while(1){
@@ -45,36 +45,25 @@ void Communication(int server_fd,struct sockaddr_in address,string mTorrentFilen
         } 
         read(new_socket, &RequestType, sizeof(int));
         if(RequestType == 1)
-            BitVectorDetailSend(new_socket,mTorrentFilename);
+            BitVectorDetailSend(new_socket);
         else
             SendData(new_socket);
     }
 }
 
-void BitVectorDetailSend(int new_socket, string mTorrentFilename){
+void BitVectorDetailSend(int new_socket){
     if(fork() == 0){
-        //Open Torrent File and Read
-        ifstream TrackerFileD(mTorrentFilename.c_str(), ifstream::binary);
-
-        string line;
-        int FileSize, ack;
-        if(TrackerFileD.is_open()){
-            getline(TrackerFileD,line);
-            getline(TrackerFileD,line);
-            getline(TrackerFileD,line);
-            FileSize = stoi(line);
-            TrackerFileD.close();
-        }
-        else{
-            cout<<"Error: Please Try to connect after some time\n";
-        }
-        int TotalPacket = FileSize / DataSize;
-        if(FileSize - TotalPacket * DataSize)
-            TotalPacket++;
+        int ack, TotalPacket;
+        char SHA[20];
 
         printf("Client is ready...\n");
-        cout<<BitBuffer<<"\n"; fflush(stdout);
-        send(new_socket, BitBuffer, TotalPacket, 0);
+
+        read(new_socket, &TotalPacket,sizeof(int));
+
+        read(new_socket, SHA ,20);
+        string BitBuffer = TotalFile[(string)SHA];
+
+        send(new_socket, BitBuffer.c_str(), BitBuffer.size(), 0);
 
         int AvlPack = 0;
         for(int i = 0; i < TotalPacket; i++){
@@ -120,7 +109,7 @@ void SendData(int new_socket){
         read(new_socket, &ack, sizeof(int));
         
         int index, PieceNo = -1; 
-        while(PieceNo < TotalPacket){
+        while(PieceNo < TotalPacket-1){
             read(new_socket, &PieceNo, sizeof(int));
             index = PieceNo * DataSize;
             input.seekg (index);
@@ -139,11 +128,8 @@ void SendData(int new_socket){
                 input.read(sendBuffer,DataSize);
                 send(new_socket , (char *)sendBuffer, DataSize,0);
             }
-
             memset(&sendBuffer, '\0',BUFFER_SIZE);
-            BitBuffer[PieceNo] = '1';
         }
-        cout<<BitBuffer[0]<<"!";
         printf("> Data sent!\n");
         close(new_socket);
         exit(0);
@@ -153,8 +139,8 @@ void SendData(int new_socket){
     }
 }
 
-void SetBitMap(int TotalPacket, int flag){
-    BitBuffer = new char[TotalPacket];
+void SetBitMap(int TotalPacket, int flag, string SHA){
+    char *BitBuffer = new char[TotalPacket];
     if(flag){
         for(int i=0; i<TotalPacket; i++)
             BitBuffer[i] = '1';
@@ -163,4 +149,5 @@ void SetBitMap(int TotalPacket, int flag){
         for(int i=0; i<TotalPacket; i++)
             BitBuffer[i] = '0';
     }
+    TotalFile[SHA] = (string)BitBuffer;
 }

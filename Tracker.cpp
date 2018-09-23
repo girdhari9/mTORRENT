@@ -6,25 +6,27 @@
 #include <sys/stat.h> 
 #include <netinet/in.h> 
 #include<fcntl.h>
+#include<arpa/inet.h>
 
-#define PORT 4040
 #define BUFFER_SIZE 2000
 #define DataSize 1024
 using namespace std;
 
-void TrackerConnection();
+void TrackerConnection(string, int);
 void Communication(int ,struct sockaddr_in);
 void ReadSeedersDetail(int ,int );
 void SendSeedersDetails(int);
 void AddSeeders(int);
 void RemoveSeeder(int);
+string seederlist;
 
-int main(){ 
-    TrackerConnection();
+int main(int arg, char *args[]){ 
+    seederlist = args[3];
+    TrackerConnection(args[1],atoi(args[2]));
     return 0; 
 } 
 
-void TrackerConnection(){
+void TrackerConnection(string IP, int PORT){
 	int server_fd; 
     struct sockaddr_in address; 
     int opt = 1; 
@@ -38,7 +40,7 @@ void TrackerConnection(){
         exit(EXIT_FAILURE); 
     } 
     address.sin_family = AF_INET; 
-    address.sin_addr.s_addr = INADDR_ANY; 
+    address.sin_addr.s_addr = inet_addr(IP.c_str()); 
     address.sin_port = htons( PORT ); 
        
     if (bind(server_fd, (struct sockaddr *)&address,sizeof(address))<0){ 
@@ -124,7 +126,7 @@ void RemoveSeeder(int new_socket){
 
     string shaline,Seeders,NewSeeder;
 
-    ifstream TrackerFileD("trackerfile.txt", ifstream::binary);
+    ifstream TrackerFileD(seederlist.c_str(), ifstream::binary);
 
     if(TrackerFileD.is_open()){
 
@@ -160,7 +162,7 @@ void RemoveSeeder(int new_socket){
         }
         TrackerFileD.close();
     }
-    ofstream TrackerFile("trackerfile.txt", ofstream::binary);
+    ofstream TrackerFile(seederlist.c_str(), ofstream::binary);
     if (TrackerFile.is_open()){
         for(auto it = SeederListMap.begin(); it != SeederListMap.end(); it++){
             TrackerFile << (it->first).c_str();
@@ -228,7 +230,7 @@ void AddSeeders(int new_socket){
 
     string NewSeeder = (string)recvBuffer + " " + to_string(port) + " " + (string)RootPath;
 
-    ifstream TrackerFileD("trackerfile.txt", ifstream::binary);
+    ifstream TrackerFileD(seederlist.c_str(), ifstream::binary);
     string Seeders,shaline;
     if(TrackerFileD.is_open()){
         while (getline(TrackerFileD,shaline)) {
@@ -247,7 +249,7 @@ void AddSeeders(int new_socket){
     else{
         cout<<"Error: Please Try to connect after some time\n";
     }
-    ofstream TrackerFile("trackerfile.txt", ofstream::binary);
+    ofstream TrackerFile(seederlist.c_str(), ofstream::binary);
     if(TrackerFile.is_open()){
         for(auto it = SeederListMap.begin(); it != SeederListMap.end(); it++){
             TrackerFile << (it->first).c_str();

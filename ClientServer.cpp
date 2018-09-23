@@ -5,6 +5,7 @@ using namespace std;
 vector<string> v;
 int PORT;
 string MYIP, MYPORT, TRACKER1IP, TRACKER1PORT;
+map<string,string> TotalFile;
 
 int main(int arg, char * args[]){
 	char root_path[1000];
@@ -28,15 +29,15 @@ int main(int arg, char * args[]){
 			string SHA = mtorrentFile(filename,mtorrentfilename,TRACKER1IP,TRACKER1PORT);
 
 			thread client (FunctionCalling, cref(mtorrentfilename),1,SHA,root_path);
-			thread server (ServerConnection, cref(mtorrentfilename));
+			thread server (ServerConnection);
 			client.join();
-			server.join();
+			server.detach();
 		}
 		else if(cmd == "remove"){
 			string mtorrentfilename;
 			cin>>mtorrentfilename;
 			if(mtorrentfilename.size() > 9 && mtorrentfilename.substr(mtorrentfilename.size()-9) != ".mtorrent"){
-        		cout<<"\n> Please give name of mtorrent file!\n";
+        		cout<<"\n> Please give correct name of mtorrent file!\n";
 		        return 0;
 		    }
 		    thread client (FunctionCalling, cref(mtorrentfilename),2,"No",root_path);
@@ -47,14 +48,14 @@ int main(int arg, char * args[]){
 			cin>>mtorrentfilename;
 
 			if(mtorrentfilename.size() > 9 && mtorrentfilename.substr(mtorrentfilename.size()-9) != ".mtorrent"){
-        		cout<<"\n> Please give name of mtorrent file!\n";
+        		cout<<"\n> Please give correct name of mtorrent file!\n";
 		        return 0;
 		    }
 
 			thread client (FunctionCalling, cref(mtorrentfilename),0,"No",root_path);
-			thread server (ServerConnection,cref(mtorrentfilename));
+			thread server (ServerConnection);
 		    client.join();
-		    server.join();
+		    server.detach();
 		}
 		else{
 			cout<<"Error: Command not found!\n";
