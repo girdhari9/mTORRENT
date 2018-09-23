@@ -4,14 +4,20 @@ using namespace std;
 
 vector<string> v;
 int PORT;
+string MYIP, MYPORT, TRACKER1IP, TRACKER1PORT;
 
 int main(int arg, char * args[]){
 	char root_path[1000];
 	getcwd(root_path,1000);
-	string cmd; 
+	string cmd;
+
+	MYIP = args[1];
+	MYPORT = args[2];
+	TRACKER1IP = args[3];
+	TRACKER1PORT = args[4];
+	PORT = stoi(MYPORT);
+
 	while(1){
-		cout<<"Enter Port: ";
-		cin>>PORT;
 		cout<<"Enter Command: ";
 		cin>>cmd;
 
@@ -19,10 +25,10 @@ int main(int arg, char * args[]){
 			string filename, mtorrentfilename;
 			cin>>filename;
 			cin>>mtorrentfilename;
-			string SHA = mtorrentFile(filename,mtorrentfilename);
+			string SHA = mtorrentFile(filename,mtorrentfilename,TRACKER1IP,TRACKER1PORT);
 
 			thread client (FunctionCalling, cref(mtorrentfilename),1,SHA,root_path);
-			thread server (ServerConnection, cref(mtorrentfilename),1);
+			thread server (ServerConnection, cref(mtorrentfilename));
 			client.join();
 			server.join();
 		}
@@ -46,7 +52,7 @@ int main(int arg, char * args[]){
 		    }
 
 			thread client (FunctionCalling, cref(mtorrentfilename),0,"No",root_path);
-			thread server (ServerConnection,cref(mtorrentfilename),0);
+			thread server (ServerConnection,cref(mtorrentfilename));
 		    client.join();
 		    server.join();
 		}

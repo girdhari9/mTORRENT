@@ -23,7 +23,7 @@ extern int PORT;
 using namespace std;
 
 //CreateTorrentFile
-string mtorrentFile(string,string);
+string mtorrentFile(string, string, string, string);
 string CalculateSHA(string,int);
 void SendToSeederList(string , string, int, string,int);
 
@@ -43,7 +43,8 @@ void BitVectorRequestToServers(string , int , int , int);
 
 //Server Function
 void SendData(int);
-void ServerConnection(string, int);
-void Communication(int server_fd,struct sockaddr_in address, string, int);
-void BitVectorDetailSend(int, string, int);
+void ServerConnection(string);
+void Communication(int server_fd,struct sockaddr_in address, string);
+void BitVectorDetailSend(int, string);
+void SetBitMap(int , int );
 

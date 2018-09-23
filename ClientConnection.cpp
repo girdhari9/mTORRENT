@@ -7,6 +7,7 @@ int TotalConn;
 map<int,string> PacketNoAvl;
 multimap<int,int> TotalAvlPack;
 extern int PORT;
+extern string MYIP;
 
 int FunctionCalling(string filename, int RequestType,string SHA_TO_Add, string root_path){
     sem_init(&mutex1, 0, 1);
@@ -29,7 +30,16 @@ int FunctionCalling(string filename, int RequestType,string SHA_TO_Add, string r
         cout<<"> Connected with Tracker: "<<mTorrentFileData[0]<<":"<<mTorrentFileData[1]<<"";
     }
     if(RequestType == 1){
+
+        ReadFileByLine(TorrentFileD,0);
+        ReadFileByLine(TorrentFileD,0);
+        int FileSize = stoi(mTorrentFileData[0]);
+        int TotalPacket = FileSize/DataSize;
+        int LastPartSize = FileSize - TotalPacket * DataSize;
+        if(LastPartSize) TotalPacket++;
+
         SendToSeederList(filename,SHA_TO_Add,sock,root_path,1);
+        SetBitMap(TotalPacket, 1);
         close(sock);
         close(TorrentFileD);
         printf("> Connection closed!\n");
@@ -62,6 +72,7 @@ int FunctionCalling(string filename, int RequestType,string SHA_TO_Add, string r
         GetSeedersDetails(sock,SHA);
         
         SendToSeederList(filename,SHA,sock,root_path,1);
+
         close(sock);
         close(TorrentFileD);
         cout<<"> Tracker Connection Closed!\n";
@@ -75,6 +86,8 @@ int FunctionCalling(string filename, int RequestType,string SHA_TO_Add, string r
         LastPartSize = FileSize - TotalPacket * DataSize;
 
         if(LastPartSize) TotalPacket++;
+
+        SetBitMap(TotalPacket, 0);
 
         int BitMap[TotalPacket];
         memset(&BitMap, -1, sizeof(BitMap));
@@ -414,6 +427,9 @@ void PieceSelection(int TotalPacket,int TotalConn, int BitMap[]){
         }
         else break;
     }
+    // for(int i=0;i<TotalPacket;i++)
+    //     cout<<BitMap[i]<<" ";
+    // cout<<"\n"; fflush(stdout);
     return ;
 }
 
@@ -424,7 +440,7 @@ void SendToSeederList(string filename, string SHA, int sock, string root_path,in
     cout<<"[+]system started...\n"; 
     cout<<"[+]system connecting...\n";
 
-    string IP = "127.0.0.1", FilePath;
+    string IP = MYIP, FilePath;
     int IPsize = IP.size(), RootPathSize = root_path.size();
 
     send(sock , &RequestType , sizeof(int) , 0 );

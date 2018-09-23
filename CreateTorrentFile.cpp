@@ -3,7 +3,7 @@
 using namespace std;
 extern int PORT;
 
-string mtorrentFile(string SrcFileName, string TorrentFileName){
+string mtorrentFile(string SrcFileName, string TorrentFileName, string Tracker1IP, string Tracker1Port){
 
     struct stat fileStat; 
     int err = stat(SrcFileName.c_str(), &fileStat); 
@@ -15,7 +15,7 @@ string mtorrentFile(string SrcFileName, string TorrentFileName){
     string l = to_string(fileStat.st_size);
     int mtorrentPtr = open(TorrentFileName.c_str(), O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR);
 
-    string Tracker1 = "127.0.0.1:4040\n";
+    string Tracker1 = Tracker1IP + ":" + Tracker1Port + "\n";
     // string Tracker2 = "127.0.0.1:9001\n";
     write(mtorrentPtr,Tracker1.c_str(),strlen(Tracker1.c_str()));
     // write(mtorrentPtr,Tracker2.c_str(),strlen(Tracker2.c_str()));

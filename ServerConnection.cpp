@@ -3,9 +3,9 @@
 using namespace std;
 
 extern int PORT;
-vector<int> BitVector;
+char *BitBuffer = NULL;
 
-void ServerConnection(string mTorrentFilename,int flag){
+void ServerConnection(string mTorrentFilename){
     int server_fd; 
     struct sockaddr_in address; 
     int opt = 1; 
@@ -30,11 +30,11 @@ void ServerConnection(string mTorrentFilename,int flag){
         perror("listen"); 
         exit(EXIT_FAILURE); printf("[+]server started...\n");
     }
-    Communication(server_fd,address,mTorrentFilename,flag);
+    Communication(server_fd,address,mTorrentFilename);
     return ;
 }
 
-void Communication(int server_fd,struct sockaddr_in address,string mTorrentFilename,int flag){
+void Communication(int server_fd,struct sockaddr_in address,string mTorrentFilename){
     int new_socket,addrlen = sizeof(address), RequestType;
     printf("[+]server started...\n");
     while(1){
@@ -45,13 +45,13 @@ void Communication(int server_fd,struct sockaddr_in address,string mTorrentFilen
         } 
         read(new_socket, &RequestType, sizeof(int));
         if(RequestType == 1)
-            BitVectorDetailSend(new_socket,mTorrentFilename,flag);
+            BitVectorDetailSend(new_socket,mTorrentFilename);
         else
             SendData(new_socket);
     }
 }
 
-void BitVectorDetailSend(int new_socket, string mTorrentFilename,int flag){
+void BitVectorDetailSend(int new_socket, string mTorrentFilename){
     if(fork() == 0){
         //Open Torrent File and Read
         ifstream TrackerFileD(mTorrentFilename.c_str(), ifstream::binary);
@@ -71,18 +71,14 @@ void BitVectorDetailSend(int new_socket, string mTorrentFilename,int flag){
         int TotalPacket = FileSize / DataSize;
         if(FileSize - TotalPacket * DataSize)
             TotalPacket++;
-        char sendBuffer[TotalPacket]; 
-        if(flag)
-            memset(&sendBuffer, '1',TotalPacket);
-        else
-            memset(&sendBuffer, '\0',TotalPacket);
 
         printf("Client is ready...\n");
-        send(new_socket, sendBuffer, TotalPacket, 0);
+        cout<<BitBuffer<<"\n"; fflush(stdout);
+        send(new_socket, BitBuffer, TotalPacket, 0);
 
         int AvlPack = 0;
         for(int i = 0; i < TotalPacket; i++){
-            if((sendBuffer[i]-'0')) AvlPack++;
+            if((BitBuffer[i]-'0')) AvlPack++;
         }
         send(new_socket, &AvlPack, sizeof(int), 0);
         read(new_socket, &ack, sizeof(int));
@@ -143,13 +139,28 @@ void SendData(int new_socket){
                 input.read(sendBuffer,DataSize);
                 send(new_socket , (char *)sendBuffer, DataSize,0);
             }
+
             memset(&sendBuffer, '\0',BUFFER_SIZE);
+            BitBuffer[PieceNo] = '1';
         }
+        cout<<BitBuffer[0]<<"!";
         printf("> Data sent!\n");
         close(new_socket);
         exit(0);
     }
     else{
         cout<<"[+]server busy...\n";
+    }
+}
+
+void SetBitMap(int TotalPacket, int flag){
+    BitBuffer = new char[TotalPacket];
+    if(flag){
+        for(int i=0; i<TotalPacket; i++)
+            BitBuffer[i] = '1';
+    }
+    else{
+        for(int i=0; i<TotalPacket; i++)
+            BitBuffer[i] = '0';
     }
 }
