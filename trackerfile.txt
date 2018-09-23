@@ -1,7 +1,6 @@
 66acad48978f4c218253
 127.0.0.1 6000 /home/gunno/Documents/os_asst/minTorrent
 916d06e5da6fc6bcc0d4
-127.0.0.1 9000 /home/gunno/Documents/os_asst/minTorrent
+127.0.0.1 9000 /home/gunno/Documents/os_asst/minTorrent 127.0.0.1 7000 /home/gunno/Documents/os_asst/minTorrent/ 127.0.0.1 7000 /home/gunno/Documents/os_asst/minTorrent/
 9fc9e67291b160ebce72
-127.0.0.1 6000 /home/gunno/Documents/os_asst/minTorrent 127.0.0.1 7000 /home/gunno/Documents/os_asst/minTorrent 127.0.0.1 8000 /home/gunno/Documents/os_asst/minTorrent
-
+127.0.0.1 7000 /home/gunno/Documents/os_asst/minTorrent 127.0.0.1 8000 /home/gunno/Documents/os_asst/minTorrent  127.0.0.1 6000 /home/gunno/Documents/os_asst/minTorrent 127.0.0.1 9000 /home/gunno/Documents/os_asst/minTorrent

@@ -29,13 +29,24 @@ int FunctionCalling(string filename, int RequestType,string SHA_TO_Add, string r
         cout<<"> Connected with Tracker: "<<mTorrentFileData[0]<<":"<<mTorrentFileData[1]<<"";
     }
     if(RequestType == 1){
-        SendToSeederList(filename,SHA_TO_Add,sock,root_path);
+        SendToSeederList(filename,SHA_TO_Add,sock,root_path,1);
+        close(sock);
+        close(TorrentFileD);
+        printf("> Connection closed!\n");
+    }
+    else if(RequestType == 2){
+        ReadFileByLine(TorrentFileD,0);
+        ReadFileByLine(TorrentFileD,0);
+        ReadFileByLine(TorrentFileD,0);
+
+        SHA = ReadSHA(TorrentFileD);
+        SHA = SHA.substr(0,20);
+        SendToSeederList(filename,SHA,sock,root_path,2);
         close(sock);
         close(TorrentFileD);
         printf("> Connection closed!\n");
     }
     else{
-
         ReadFileByLine(TorrentFileD,0);
         cout<<"> You are requesting to download: "<<mTorrentFileData[0];
         FileName = mTorrentFileData[0];
@@ -49,17 +60,15 @@ int FunctionCalling(string filename, int RequestType,string SHA_TO_Add, string r
         SHA = SHA.substr(0,20);
 
         GetSeedersDetails(sock,SHA);
-
-        for(auto it = ConDetail.begin(); it != ConDetail.end(); it++)
-            cout<<*it<<"\n";
-    
-
+        
+        SendToSeederList(filename,SHA,sock,root_path,1);
+        close(sock);
+        close(TorrentFileD);
         cout<<"> Tracker Connection Closed!\n";
+
         // Connections using multithreads
         int ConDetailIndex = 0;
         TotalConn = ConDetail.size()/3;
-
-        cout<<TotalConn<<" ";
 
         int LastPartSize = 0;
         int TotalPacket = FileSize/DataSize;
@@ -72,7 +81,7 @@ int FunctionCalling(string filename, int RequestType,string SHA_TO_Add, string r
 
         thread *threadptr = new thread[TotalConn];
         for(int thread_n = 0; thread_n < TotalConn; thread_n++,ConDetailIndex+=3){
-            threadptr[thread_n] = thread(BitVectorRequestToServers,ConDetail[ConDetailIndex],atoi(ConDetail[ConDetailIndex+1].c_str()),ref(FileName),thread_n);
+            threadptr[thread_n] = thread(BitVectorRequestToServers,ConDetail[ConDetailIndex],atoi(ConDetail[ConDetailIndex+1].c_str()),thread_n,TotalPacket);
         }
         
         for(int thread_n=0; thread_n < TotalConn; thread_n++,ConDetailIndex++){
@@ -143,31 +152,21 @@ void GetSeedersDetails(int sock,string SHA){
     send(sock, SHA.c_str(), SHA_DIGEST_LENGTH, 0 );
     read(sock, &DataLength, sizeof(int));
 
-    if(DataLength < 3){
-        close(sock);
-        return ;
-    }
+    // if(DataLength < 3){
+    //     close(sock);
+    //     return ;
+    // }
     read(sock, recvBuffer, DataLength);
+    string Seeders = (string)recvBuffer;
 
-    int index = 0, ConDetailIndex = 0;
-
-    while(index < strlen(recvBuffer)){
-        string ip_add, port_add, FileAddress;
-        
-        while(recvBuffer[index] != ' ')
-            ip_add += recvBuffer[index++];
-        ConDetail.push_back(ip_add);
-
-        while(recvBuffer[++index] != ' ')
-            port_add += recvBuffer[index];
-        ConDetail.push_back(port_add);
-
-        while(recvBuffer[++index] != ' ' && index < strlen(recvBuffer))
-            FileAddress += recvBuffer[index];
-        ConDetail.push_back(FileAddress);
-
-        ConDetailIndex+=3;
-        index++;
+    stringstream seeder(Seeders); // Used for breaking words 
+    string IP,Port,FilePath; // to store individual words 
+    while(seeder >> IP){
+        ConDetail.push_back(IP);
+        seeder >> Port;
+        ConDetail.push_back(Port);
+        seeder >> FilePath;
+        ConDetail.push_back(FilePath);
     }
     return ;
 }
@@ -273,7 +272,7 @@ void RecieveBitVector(int sock,string recvFileName, int FileSize, int LastPartSi
     int PieceNo=0, index;
     send(sock , &ack, sizeof(int) , 0);
 
-    for(int PieceNo = 0; PieceNo < TotalPacket;){
+    while(PieceNo < TotalPacket-1){
         if(BitMap1[PieceNo] == thread_n){
             send(sock, &PieceNo, sizeof(int), 0);
             read(sock, recvBuffer, DataSize);
@@ -351,24 +350,17 @@ int Connection(string IPaddress,int PORT){
     return sock;
 }
 
-void BitVectorRequestToServers(string IPaddress, int PORT, string FileName, int thread_n){
+void BitVectorRequestToServers(string IPaddress, int PORT, int thread_n,int TotalPacket){
     int sock = Connection(IPaddress,PORT);
 
     int BitMapRequest = 1;
     send(sock , &BitMapRequest , sizeof(int) , 0 );
 
-    char sendBuffer[BUFFER_SIZE];
-    char recvBuffer[BUFFER_SIZE];
-    memset(&recvBuffer, '\0',BUFFER_SIZE);
-    memset(&sendBuffer, '\0',BUFFER_SIZE);
+    char recvBuffer[TotalPacket];
+    memset(&recvBuffer, '\0',TotalPacket);
     int ack = 1, AvlPack;
 
-    int fileNameLength = FileName.length();
-
-    send(sock , &fileNameLength , sizeof(int) , 0 );
-    send(sock , FileName.c_str() , fileNameLength-1 , 0 );
-
-    read(sock, recvBuffer, BUFFER_SIZE);
+    read(sock, recvBuffer, TotalPacket);
     read(sock, &AvlPack, sizeof(int));
     send(sock , &ack , sizeof(int) , 0 );
 
@@ -425,14 +417,13 @@ void PieceSelection(int TotalPacket,int TotalConn, int BitMap[]){
     return ;
 }
 
-void SendToSeederList(string filename, string SHA, int sock, string root_path){
+void SendToSeederList(string filename, string SHA, int sock, string root_path,int RequestType){
     char sendBuffer[BUFFER_SIZE];
     memset(&sendBuffer, '\0',BUFFER_SIZE);
 
     cout<<"[+]system started...\n"; 
     cout<<"[+]system connecting...\n";
 
-    int RequestType = 1;
     string IP = "127.0.0.1", FilePath;
     int IPsize = IP.size(), RootPathSize = root_path.size();
 

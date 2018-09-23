@@ -143,7 +143,7 @@ void SendData(int new_socket){
             index = PieceNo * DataSize;
             input.seekg (index);
 
-            if(PieceNo == TotalPacket-1){
+            if(PieceNo == TotalPacket){
                 if(LastPartSize){
                     input.read(sendBuffer,LastPartSize);
                     send(new_socket , (char *)sendBuffer, LastPartSize,0);

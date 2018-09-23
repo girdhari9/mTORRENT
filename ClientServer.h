@@ -21,14 +21,15 @@
 extern int PORT;
 
 using namespace std;
+
+//CreateTorrentFile
 string mtorrentFile(string,string);
 string CalculateSHA(string,int);
-void SendToSeederList(string , string, int, string);
+void SendToSeederList(string , string, int, string,int);
 
-void ServerConnection();
 void tokenized(string );
-void Communication(int server_fd,struct sockaddr_in address);
 
+//Client Function
 int FunctionCalling(string,int,string, string);
 int clientConnection(string, int, string &, int, int, int,vector<int> BitMap1, int, ofstream &output);
 int TrackerConnection(string, int);
@@ -38,4 +39,11 @@ string ReadSHA(int);
 void ReadFileByLine(int, int);
 void RecieveBitVector(int ,string ,int ,int, int , vector<int> BitMap1,int, ofstream &output);
 void PieceSelection(int ,int ,int BitMap[]);
-void BitVectorRequestToServers(string , int , string , int );
+void BitVectorRequestToServers(string , int , int , int);
+
+//Server Function
+void SendData(int);
+void ServerConnection(string, int);
+void Communication(int server_fd,struct sockaddr_in address, string, int);
+void BitVectorDetailSend(int, string, int);
+

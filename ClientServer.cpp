@@ -20,11 +20,21 @@ int main(int arg, char * args[]){
 			cin>>filename;
 			cin>>mtorrentfilename;
 			string SHA = mtorrentFile(filename,mtorrentfilename);
+
 			thread client (FunctionCalling, cref(mtorrentfilename),1,SHA,root_path);
+			thread server (ServerConnection, cref(mtorrentfilename),1);
 			client.join();
+			server.join();
 		}
 		else if(cmd == "remove"){
-
+			string mtorrentfilename;
+			cin>>mtorrentfilename;
+			if(mtorrentfilename.size() > 9 && mtorrentfilename.substr(mtorrentfilename.size()-9) != ".mtorrent"){
+        		cout<<"\n> Please give name of mtorrent file!\n";
+		        return 0;
+		    }
+		    thread client (FunctionCalling, cref(mtorrentfilename),2,"No",root_path);
+		    client.join();
 		}
 		else if(cmd == "get" || cmd == "Get"){
 			string mtorrentfilename;
@@ -34,10 +44,9 @@ int main(int arg, char * args[]){
         		cout<<"\n> Please give name of mtorrent file!\n";
 		        return 0;
 		    }
-		    
-			thread client (FunctionCalling, cref(mtorrentfilename),0,"No",root_path);
-		    thread server (ServerConnection);
 
+			thread client (FunctionCalling, cref(mtorrentfilename),0,"No",root_path);
+			thread server (ServerConnection,cref(mtorrentfilename),0);
 		    client.join();
 		    server.join();
 		}
