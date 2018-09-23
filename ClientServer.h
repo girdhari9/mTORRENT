@@ -27,7 +27,10 @@ string mtorrentFile(string, string, string, string);
 string CalculateSHA(string,int);
 void SendToSeederList(string , string, int, string,int);
 
+// Main Function
 void tokenized(string );
+void UpdateDownloadLog(int ,string );
+void ShowDownloadDetail();
 
 //Client Function
 int FunctionCalling(string,int,string, string);
