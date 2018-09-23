@@ -31,6 +31,10 @@ void SendToSeederList(string , string, int, string,int);
 void tokenized(string );
 void UpdateDownloadLog(int ,string );
 void ShowDownloadDetail();
+void ReadLogFile(string);
+void UpdateLogFile(string);
+void UpdateToTracker();
+
 
 //Client Function
 int FunctionCalling(string,int,string, string);
